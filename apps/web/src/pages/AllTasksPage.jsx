@@ -16,6 +16,7 @@ import { useRecurrence } from '@/hooks/useRecurrence.js';
 import { useViewPreference } from '@/hooks/useViewPreference.js';
 import { useTimeSlots } from '@/hooks/useTimeSlots.js';
 import { GridLayout } from '@/components/GridLayout.jsx';
+import { GridTaskCard } from '@/components/GridTaskCard.jsx';
 import { filterTasksByDate, groupTasksByStatus } from '@/lib/filterTasksByDate.js';
 
 const AllTasksPage = () => {
@@ -164,6 +165,24 @@ const AllTasksPage = () => {
     }
   };
 
+  const handleTaskCheck = async (taskId, isChecked) => {
+    try {
+      const { data, error } = await supabase
+        .from('tareas')
+        .update({ estado: isChecked ? 'Hecho' : 'Pendiente' })
+        .eq('id', taskId)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      setTasks(tasks.map(t => t.id === taskId ? data : t));
+      toast.success(isChecked ? 'Tarea completada' : 'Tarea pendiente');
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      toast.error('Error al actualizar estado');
+    }
+  };
+
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
       ...prev,
@@ -297,30 +316,12 @@ const AllTasksPage = () => {
                       </div>
                     ) : (
                       filteredTasks.map((task) => (
-                        <div 
-                          key={task.id} 
-                          className={`task-card cursor-pointer group ${task.estado === 'Hecho' ? 'opacity-80' : ''}`}
-                          onClick={() => handleTaskClick(task)}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-bold text-muted-foreground bg-background px-1.5 py-0.5 rounded-md border border-border">#{task.numero}</span>
-                            </div>
-                          </div>
-                          
-                          <h3 className={`font-medium text-[14px] mb-3 leading-tight transition-colors ${task.estado === 'Hecho' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                            {task.tarea}
-                          </h3>
-                          
-                          <div className="flex flex-wrap gap-1.5 mb-3">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoryBadgeClass(task.categoria_codigo)}`}>
-                              {task.categoria_codigo}
-                            </span>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getPriorityBadgeClass(task.prioridad)}`}>
-                              {task.prioridad}
-                            </span>
-                          </div>
-                        </div>
+                        <GridTaskCard 
+                          key={task.id}
+                          task={task}
+                          onCheck={handleTaskCheck}
+                          onEdit={handleTaskClick}
+                        />
                       ))
                     )}
                   </GridLayout>
