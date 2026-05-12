@@ -11,7 +11,7 @@ export const filterTasksByDate = (tasks, filterType, referenceDate = new Date())
   weekEnd.setDate(weekEnd.getDate() + 7);
 
   return tasks.filter(task => {
-    const hasDate = task.fecha_vencimiento && task.fecha_vencimiento.trim() !== '';
+    const hasDate = task.fecha_vencimiento && typeof task.fecha_vencimiento === 'string' && task.fecha_vencimiento.trim() !== '';
     let taskDate = null;
     
     if (hasDate) {
