@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,12 +40,14 @@ const EditSlotModal = ({ isOpen, onClose, slot, onSave, onDelete, existingSlots 
 
   const fetchCategories = async () => {
     try {
-      const records = await pb.collection('categorias_objetivos').getFullList({
-        filter: 'activa = true',
-        sort: 'nombre',
-        $autoCancel: false
-      });
-      setCategories(records);
+      const { data, error } = await supabase
+        .from('categorias_objetivos')
+        .select('*')
+        .eq('activa', true)
+        .order('nombre');
+        
+      if (error) throw error;
+      setCategories(data);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -81,16 +83,19 @@ const EditSlotModal = ({ isOpen, onClose, slot, onSave, onDelete, existingSlots 
     setIsSubmitting(true);
     
     try {
-      // 1. Update the time_slot record in PocketBase with all fields including categoria
-      await pb.collection('time_slots').update(slot.id, {
-        name: formData.nombre.trim(),
-        start_time: formData.hora_inicio,
-        end_time: formData.hora_fin,
-        color: formData.color,
-        categoria: formData.categoria
-      }, { $autoCancel: false });
+      const { error } = await supabase
+        .from('time_slots')
+        .update({
+          name: formData.nombre.trim(),
+          start_time: formData.hora_inicio,
+          end_time: formData.hora_fin,
+          color: formData.color,
+          categoria: formData.categoria
+        })
+        .eq('id', slot.id);
 
-      // 2. Update the franja object in daily_objectives.franjas JSON
+      if (error) throw error;
+
       const updatedSlot = {
         ...slot,
         nombre: formData.nombre.trim(),

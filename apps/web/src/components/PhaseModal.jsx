@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,15 +27,31 @@ const PhaseModal = ({ isOpen, onClose, onSave, projectId, phase = null }) => {
 
     setIsSubmitting(true);
     try {
-      let saved;
+      let data, error;
       if (phase) {
-        saved = await pb.collection('project_phases').update(phase.id, formData, { $autoCancel: false });
+        const response = await supabase
+          .from('project_phases')
+          .update(formData)
+          .eq('id', phase.id)
+          .select()
+          .single();
+        data = response.data;
+        error = response.error;
         toast.success('Fase actualizada');
       } else {
-        saved = await pb.collection('project_phases').create(formData, { $autoCancel: false });
+        const response = await supabase
+          .from('project_phases')
+          .insert(formData)
+          .select()
+          .single();
+        data = response.data;
+        error = response.error;
         toast.success('Fase creada');
       }
-      onSave(saved);
+      
+      if (error) throw error;
+      
+      onSave(data);
       onClose();
     } catch (error) {
       toast.error('Error al guardar la fase');

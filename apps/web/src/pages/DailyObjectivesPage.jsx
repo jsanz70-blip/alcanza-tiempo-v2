@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -48,32 +48,45 @@ const DailyObjectivesPage = () => {
       const startOfDay = new Date(dateStr + 'T00:00:00.000Z');
       const endOfDay = new Date(dateStr + 'T23:59:59.999Z');
 
-      const [objectivesRes, tasksRes, projectsRes] = await Promise.all([
-        pb.collection('daily_objectives').getFullList({
-          filter: `fecha >= "${startOfDay.toISOString().replace('T',' ')}" && fecha <= "${endOfDay.toISOString().replace('T',' ')}"`,
-          $autoCancel: false
-        }),
-        pb.collection('tareas').getFullList({
-          sort: 'prioridad',
-          expand: 'proyecto_id',
-          $autoCancel: false
-        }),
-        pb.collection('projects').getFullList({
-          sort: 'nombre',
-          $autoCancel: false
-        })
+      const [objRes, tksRes, prjRes] = await Promise.all([
+        supabase
+          .from('daily_objectives')
+          .select('*')
+          .gte('fecha', startOfDay.toISOString())
+          .lte('fecha', endOfDay.toISOString()),
+        supabase
+          .from('tareas')
+          .select('*, projects(*)')
+          .order('prioridad'),
+        supabase
+          .from('projects')
+          .select('*')
+          .order('nombre')
       ]);
 
-      let currentRecord = objectivesRes[0];
+      if (objRes.error) throw objRes.error;
+      if (tksRes.error) throw tksRes.error;
+      if (prjRes.error) throw prjRes.error;
+
+      let currentRecord = objRes.data[0];
+      const tasksRes = tksRes.data;
+      const projectsRes = prjRes.data;
 
       // Create record if it doesn't exist
       if (!currentRecord) {
         const payload = {
-          fecha: dateStr + ' 12:00:00.000Z',
-          franjas: null
+          fecha: dateStr + 'T12:00:00.000Z',
+          franjas: []
         };
         
-        currentRecord = await pb.collection('daily_objectives').create(payload, { $autoCancel: false });
+        const { data, error } = await supabase
+          .from('daily_objectives')
+          .insert(payload)
+          .select()
+          .single();
+          
+        if (error) throw error;
+        currentRecord = data;
         toast.success('Registro del día inicializado');
       }
 
@@ -113,11 +126,18 @@ const DailyObjectivesPage = () => {
   const updateFranjasInDB = async (newFranjas) => {
     if (!dailyRecord) return;
     try {
-      const updatedRecord = await pb.collection('daily_objectives').update(dailyRecord.id, {
-        franjas: newFranjas
-      }, { $autoCancel: false });
+      const { data, error } = await supabase
+        .from('daily_objectives')
+        .update({
+          franjas: newFranjas
+        })
+        .eq('id', dailyRecord.id)
+        .select()
+        .single();
+        
+      if (error) throw error;
       
-      setDailyRecord(updatedRecord);
+      setDailyRecord(data);
       setFranjas(newFranjas);
     } catch (error) {
       console.error('Error updating franjas:', error);

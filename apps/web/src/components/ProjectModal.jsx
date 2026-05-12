@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,15 +34,31 @@ const ProjectModal = ({ isOpen, onClose, onSave, project = null, tasksCount = 0 
 
     setIsSubmitting(true);
     try {
-      let saved;
+      let data, error;
       if (project) {
-        saved = await pb.collection('projects').update(project.id, formData, { $autoCancel: false });
+        const response = await supabase
+          .from('projects')
+          .update(formData)
+          .eq('id', project.id)
+          .select()
+          .single();
+        data = response.data;
+        error = response.error;
         toast.success('Proyecto actualizado');
       } else {
-        saved = await pb.collection('projects').create(formData, { $autoCancel: false });
+        const response = await supabase
+          .from('projects')
+          .insert(formData)
+          .select()
+          .single();
+        data = response.data;
+        error = response.error;
         toast.success('Proyecto creado');
       }
-      onSave(saved);
+      
+      if (error) throw error;
+      
+      onSave(data);
       onClose();
     } catch (error) {
       toast.error('Error al guardar el proyecto');
@@ -58,8 +74,13 @@ const ProjectModal = ({ isOpen, onClose, onSave, project = null, tasksCount = 0 
     
     setIsDeleting(true);
     try {
-      // First unassign all tasks (PocketBase relations often set to null automatically, but good practice to be sure or let PB handle it if relation is not required)
-      await pb.collection('projects').delete(project.id, { $autoCancel: false });
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', project.id);
+        
+      if (error) throw error;
+      
       toast.success('Proyecto eliminado');
       onSave();
       onClose();

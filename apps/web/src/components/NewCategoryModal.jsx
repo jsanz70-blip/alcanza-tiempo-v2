@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,11 +32,15 @@ const NewCategoryModal = ({ isOpen, onClose, onSuccess }) => {
 
     setIsSubmitting(true);
     try {
-      await pb.collection('categorias_objetivos').create({
-        nombre: nombre.trim(),
-        color,
-        activa: true
-      }, { $autoCancel: false });
+      const { error } = await supabase
+        .from('categorias_objetivos')
+        .insert({
+          nombre: nombre.trim(),
+          color,
+          activa: true
+        });
+        
+      if (error) throw error;
       
       toast.success('Categoría creada');
       onSuccess();

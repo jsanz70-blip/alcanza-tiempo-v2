@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 
 export const useRecurrence = () => {
   const calculateNextDate = useCallback((currentDateStr, recurrenceType) => {
@@ -57,9 +57,16 @@ export const useRecurrence = () => {
         numero: Math.floor(100000 + Math.random() * 900000).toString()
       };
 
-      const createdTask = await pb.collection('tareas').create(newTaskData, { $autoCancel: false });
+      const { data, error } = await supabase
+        .from('tareas')
+        .insert(newTaskData)
+        .select()
+        .single();
+        
+      if (error) throw error;
+
       return {
-        task: createdTask,
+        task: data,
         nextDate: new Date(nextDate).toLocaleDateString()
       };
     } catch (error) {

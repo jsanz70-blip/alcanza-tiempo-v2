@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import { BellRing, Check, Clock, X } from 'lucide-react';
 
@@ -29,7 +29,13 @@ const AlarmModal = ({ task, isOpen, onClose, onPostpone }) => {
   const handleMarkAsDone = async () => {
     setIsProcessing(true);
     try {
-      await pb.collection('tareas').update(task.id, { estado: 'Hecho' }, { $autoCancel: false });
+      const { error } = await supabase
+        .from('tareas')
+        .update({ estado: 'Hecho' })
+        .eq('id', task.id);
+        
+      if (error) throw error;
+      
       toast.success('Tarea marcada como completada');
       onClose();
     } catch (err) {

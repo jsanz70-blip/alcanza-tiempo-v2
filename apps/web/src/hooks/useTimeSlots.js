@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import pb from '@/lib/pocketbaseClient';
 
 export const SLOTS = [
   { id: 'Mañana temprano', label: 'Mañana temprano', time: '07:00-09:00', colorClass: 'slot-morning' },

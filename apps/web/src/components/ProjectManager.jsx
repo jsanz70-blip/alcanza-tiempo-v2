@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit2, Trash2, FolderKanban } from 'lucide-react';
@@ -21,11 +21,13 @@ const ProjectManager = ({ isOpen, onClose }) => {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const records = await pb.collection('projects').getFullList({
-        sort: '-created',
-        $autoCancel: false
-      });
-      setProjects(records);
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      setProjects(data);
     } catch (error) {
       console.error('Error fetching projects:', error);
       toast.error('Error al cargar proyectos');
@@ -47,7 +49,13 @@ const ProjectManager = ({ isOpen, onClose }) => {
   const handleDelete = async (id) => {
     if (window.confirm('¿Seguro que deseas eliminar este proyecto?')) {
       try {
-        await pb.collection('projects').delete(id, { $autoCancel: false });
+        const { error } = await supabase
+          .from('projects')
+          .delete()
+          .eq('id', id);
+          
+        if (error) throw error;
+        
         setProjects(projects.filter(p => p.id !== id));
         toast.success('Proyecto eliminado');
       } catch (error) {

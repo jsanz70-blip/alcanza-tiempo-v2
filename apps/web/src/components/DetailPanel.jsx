@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -87,8 +87,14 @@ const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
 
   const fetchProjects = async () => {
     try {
-      const records = await pb.collection('projects').getFullList({ filter: 'estado="Activo"', sort: 'nombre', $autoCancel: false });
-      setProjects(records);
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('estado', 'Activo')
+        .order('nombre');
+        
+      if (error) throw error;
+      setProjects(data);
     } catch (e) {
       console.error('Error fetching projects:', e);
     }
@@ -195,7 +201,8 @@ const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
               alarmas_historial: []
             };
             
-            await pb.collection('tareas').create(newTaskData, { $autoCancel: false });
+            const { error } = await supabase.from('tareas').insert(newTaskData);
+            if (error) throw error;
             toast.success(`Tarea recurrente creada para ${new Date(nextDate).toLocaleDateString()}`);
           } else {
             toast.success('Tarea completada');
@@ -204,12 +211,25 @@ const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
           toast.success('Tarea actualizada');
         }
 
-        const updated = await pb.collection('tareas').update(task.id, dataToSave, { $autoCancel: false });
-        onUpdate(updated);
+        const { data, error } = await supabase
+          .from('tareas')
+          .update(dataToSave)
+          .eq('id', task.id)
+          .select()
+          .single();
+          
+        if (error) throw error;
+        onUpdate(data);
       } else {
         dataToSave.numero = Math.floor(100000 + Math.random() * 900000).toString();
-        const created = await pb.collection('tareas').create(dataToSave, { $autoCancel: false });
-        onUpdate(created);
+        const { data, error } = await supabase
+          .from('tareas')
+          .insert(dataToSave)
+          .select()
+          .single();
+          
+        if (error) throw error;
+        onUpdate(data);
         toast.success('Tarea creada');
       }
       onClose(false);
@@ -228,7 +248,12 @@ const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
     if (window.confirm('¿Estás seguro de que deseas eliminar esta tarea?')) {
       setIsDeleting(true);
       try {
-        await pb.collection('tareas').delete(task.id, { $autoCancel: false });
+        const { error } = await supabase
+          .from('tareas')
+          .delete()
+          .eq('id', task.id);
+          
+        if (error) throw error;
         toast.success('Tarea eliminada');
         onUpdate(task, true);
         onClose(false);

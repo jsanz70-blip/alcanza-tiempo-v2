@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -23,13 +23,19 @@ const CategoriesModal = ({ isOpen, onClose }) => {
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const filter = showInactive ? '' : 'activa = true';
-      const records = await pb.collection('categorias_objetivos').getFullList({
-        filter,
-        sort: '-created',
-        $autoCancel: false
-      });
-      setCategories(records);
+      let query = supabase
+        .from('categorias_objetivos')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (!showInactive) {
+        query = query.eq('activa', true);
+      }
+      
+      const { data, error } = await query;
+        
+      if (error) throw error;
+      setCategories(data);
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error('Error al cargar categorías');
@@ -40,9 +46,14 @@ const CategoriesModal = ({ isOpen, onClose }) => {
 
   const handleToggleActive = async (id, currentStatus) => {
     try {
-      await pb.collection('categorias_objetivos').update(id, {
-        activa: !currentStatus
-      }, { $autoCancel: false });
+      const { error } = await supabase
+        .from('categorias_objetivos')
+        .update({
+          activa: !currentStatus
+        })
+        .eq('id', id);
+        
+      if (error) throw error;
       
       if (!showInactive && currentStatus) {
         setCategories(categories.filter(c => c.id !== id));

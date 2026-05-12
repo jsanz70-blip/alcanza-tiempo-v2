@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,14 +40,16 @@ const NewSlotModal = ({ isOpen, onClose, onSave, existingSlots = [], dailyObject
 
   const fetchCategories = async () => {
     try {
-      const records = await pb.collection('categorias_objetivos').getFullList({
-        filter: 'activa = true',
-        sort: 'nombre',
-        $autoCancel: false
-      });
-      setCategories(records);
-      if (records.length > 0 && !formData.categoria) {
-        setFormData(prev => ({ ...prev, categoria: records[0].nombre }));
+      const { data, error } = await supabase
+        .from('categorias_objetivos')
+        .select('*')
+        .eq('activa', true)
+        .order('nombre');
+        
+      if (error) throw error;
+      setCategories(data);
+      if (data.length > 0 && !formData.categoria) {
+        setFormData(prev => ({ ...prev, categoria: data[0].nombre }));
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -107,7 +109,6 @@ const NewSlotModal = ({ isOpen, onClose, onSave, existingSlots = [], dailyObject
     setIsSubmitting(true);
 
     try {
-      // 1. Create time_slot in PocketBase collection with categoria field
       const timeSlotPayload = {
         name: formData.nombre.trim(),
         start_time: formData.hora_inicio,
@@ -117,9 +118,14 @@ const NewSlotModal = ({ isOpen, onClose, onSave, existingSlots = [], dailyObject
         daily_objectives_id: dailyObjectiveId
       };
 
-      const createdSlot = await pb.collection('time_slots').create(timeSlotPayload, { $autoCancel: false });
+      const { data: createdSlot, error } = await supabase
+        .from('time_slots')
+        .insert(timeSlotPayload)
+        .select()
+        .single();
+        
+      if (error) throw error;
 
-      // 2. Prepare JSON formatted slot to update daily_objectives.franjas
       const newFranjaSlot = {
         id: createdSlot.id,
         nombre: timeSlotPayload.name,

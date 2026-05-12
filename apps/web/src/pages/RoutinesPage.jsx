@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -35,12 +35,14 @@ const RoutinesPage = () => {
 
   const fetchTasks = async () => {
     try {
-      const allTasks = await pb.collection('tareas').getFullList({
-        sort: 'numero',
-        $autoCancel: false
-      });
+      const { data, error } = await supabase
+        .from('tareas')
+        .select('*')
+        .order('numero');
+        
+      if (error) throw error;
       
-      const routines = filterRoutinesExcludingCompleted(allTasks);
+      const routines = filterRoutinesExcludingCompleted(data);
       setRoutineTasks(routines);
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -67,22 +69,32 @@ const RoutinesPage = () => {
             fecha_vencimiento: nextDate,
             alarmas_historial: []
           };
-          await pb.collection('tareas').create(newTaskData, { $autoCancel: false });
+          
+          const { error } = await supabase.from('tareas').insert(newTaskData);
+          if (error) throw error;
+          
           toast.success(`Rutina recurrente creada para ${new Date(nextDate).toLocaleDateString()}`);
         } else {
           toast.success('Rutina completada');
         }
       }
 
-      const updated = await pb.collection('tareas').update(taskId, {
-        check_semana: !currentValue,
-        estado: !currentValue ? 'Hecho' : 'Pendiente'
-      }, { $autoCancel: false });
+      const { data, error } = await supabase
+        .from('tareas')
+        .update({
+          check_semana: !currentValue,
+          estado: !currentValue ? 'Hecho' : 'Pendiente'
+        })
+        .eq('id', taskId)
+        .select()
+        .single();
+        
+      if (error) throw error;
       
       if (isCompleting) {
         setRoutineTasks(routineTasks.filter(t => t.id !== taskId));
       } else {
-        setRoutineTasks(routineTasks.map(t => t.id === taskId ? updated : t));
+        setRoutineTasks(routineTasks.map(t => t.id === taskId ? data : t));
       }
     } catch (error) {
       console.error('Error updating task:', error);

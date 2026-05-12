@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -22,11 +22,13 @@ const ProjectSelectionDialog = ({ isOpen, onClose, onConfirm }) => {
   const fetchProjects = async () => {
     setLoading(true);
     try {
-      const records = await pb.collection('projects').getFullList({
-        sort: 'nombre',
-        $autoCancel: false
-      });
-      setProjects(records);
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('nombre');
+        
+      if (error) throw error;
+      setProjects(data);
     } catch (error) {
       console.error('Error fetching projects:', error);
       toast.error('Error al cargar proyectos');

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 
 export const useAlarmService = () => {
@@ -90,11 +90,16 @@ export const useAlarmService = () => {
 
       const existingHistory = Array.isArray(task.alarmas_historial) ? task.alarmas_historial : [];
 
-      await pb.collection('tareas').update(task.id, {
-        hora_alarma: newTimeStr,
-        fecha_vencimiento: newFechaVencimiento,
-        alarmas_historial: [...existingHistory, historyEntry]
-      }, { $autoCancel: false });
+      const { error } = await supabase
+        .from('tareas')
+        .update({
+          hora_alarma: newTimeStr,
+          fecha_vencimiento: newFechaVencimiento,
+          alarmas_historial: [...existingHistory, historyEntry]
+        })
+        .eq('id', task.id);
+
+      if (error) throw error;
 
       toast.success(`Alarma pospuesta para las ${newTimeStr}`);
       clearAlarm();
@@ -110,10 +115,13 @@ export const useAlarmService = () => {
       const currentHHMM = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
       // Fetch tasks that have an alarm set and are not done
-      const tasks = await pb.collection('tareas').getFullList({
-        filter: `estado != "Hecho" && hora_alarma != ""`,
-        $autoCancel: false
-      });
+      const { data: tasks, error } = await supabase
+        .from('tareas')
+        .select('*')
+        .neq('estado', 'Hecho')
+        .neq('hora_alarma', '');
+
+      if (error) throw error;
 
       tasks.forEach(task => {
         if (!task.fecha_vencimiento || !task.hora_alarma) return;

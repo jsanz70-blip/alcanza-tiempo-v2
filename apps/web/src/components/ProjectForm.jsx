@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import supabase from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,11 +69,20 @@ const ProjectForm = ({ isOpen, onClose, projectToEdit, onSuccess }) => {
       };
 
       if (projectToEdit) {
-        await pb.collection('projects').update(projectToEdit.id, dataToSave, { $autoCancel: false });
+        const { error } = await supabase
+          .from('projects')
+          .update(dataToSave)
+          .eq('id', projectToEdit.id);
+          
+        if (error) throw error;
         toast.success('Proyecto actualizado');
       } else {
         dataToSave.progreso = 0;
-        await pb.collection('projects').create(dataToSave, { $autoCancel: false });
+        const { error } = await supabase
+          .from('projects')
+          .insert(dataToSave);
+          
+        if (error) throw error;
         toast.success('Proyecto creado con éxito');
       }
       
