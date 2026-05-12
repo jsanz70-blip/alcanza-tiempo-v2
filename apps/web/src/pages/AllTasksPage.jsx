@@ -176,8 +176,7 @@ const AllTasksPage = () => {
 
   const bloques = ['Todos', ...new Set(tasks.map(t => t.bloque).filter(Boolean))];
   
-  // Separate tasks with and without dates
-  const tasksWithDate = filteredTasks.filter(t => t.fecha_vencimiento);
+  const tasksWithDate = filteredTasks;
   const tasksWithoutDate = getTasksWithoutDate(filteredTasks);
   
   const statusGroupedTasks = useMemo(() => groupTasksByStatus(tasksWithDate), [tasksWithDate]);
