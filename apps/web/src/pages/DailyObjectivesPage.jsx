@@ -266,7 +266,7 @@ const DailyObjectivesPage = () => {
   return (
     <>
       <Helmet>
-        <title>Objetivos del Día - Iciz Market</title>
+        <title>Objetivos del Día - Gestor de Tareas</title>
         <meta name="description" content="Organiza tu día en franjas horarias y asigna tareas." />
       </Helmet>
       

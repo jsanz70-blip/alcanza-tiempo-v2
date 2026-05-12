@@ -275,7 +275,7 @@ const TodayPage = () => {
   return (
     <>
       <Helmet>
-        <title>Tareas de hoy - Iciz Market</title>
+        <title>Tareas de hoy - Gestor de Tareas</title>
       </Helmet>
       
       <div className="min-h-screen bg-background pb-40">

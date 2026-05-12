@@ -244,7 +244,7 @@ const AllTasksPage = () => {
   return (
     <>
       <Helmet>
-        <title>Todas las tareas - Iciz Market</title>
+        <title>Todas las tareas - Gestor de Tareas</title>
       </Helmet>
       
       <div className="min-h-screen bg-background pb-24">

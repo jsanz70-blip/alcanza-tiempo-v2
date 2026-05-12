@@ -151,8 +151,8 @@ const MetasPage = () => {
   return (
     <>
       <Helmet>
-        <title>Metas - Iciz Market</title>
-        <meta name="description" content="Gestiona tus metas y objetivos en Iciz Market." />
+        <title>Metas - Gestor de Tareas</title>
+        <meta name="description" content="Gestiona tus metas y objetivos." />
       </Helmet>
       
       <div className="min-h-screen bg-background pb-24">

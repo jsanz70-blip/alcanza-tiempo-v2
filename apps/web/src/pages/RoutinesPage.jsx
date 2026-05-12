@@ -206,8 +206,8 @@ const RoutinesPage = () => {
   return (
     <>
       <Helmet>
-        <title>Rutinas - Iciz Market</title>
-        <meta name="description" content="Gestiona tus rutinas en Iciz Market." />
+        <title>Rutinas - Gestor de Tareas</title>
+        <meta name="description" content="Gestiona tus rutinas." />
       </Helmet>
       
       <div className="min-h-screen bg-background pb-24">

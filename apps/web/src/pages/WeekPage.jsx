@@ -191,8 +191,8 @@ const WeekPage = () => {
   return (
     <>
       <Helmet>
-        <title>Tareas de la semana - Iciz Market</title>
-        <meta name="description" content="Gestiona tus tareas semanales en Iciz Market." />
+        <title>Tareas de la semana - Gestor de Tareas</title>
+        <meta name="description" content="Gestiona tus tareas semanales." />
       </Helmet>
       
       <div className="min-h-screen bg-background pb-24">

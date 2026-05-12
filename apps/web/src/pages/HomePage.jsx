@@ -6,8 +6,8 @@ const HomePage = () => {
   return (
     <>
       <Helmet>
-        <title>Iciz Market - Gestión de Tareas</title>
-        <meta name="description" content="Sistema de gestión de tareas para Iciz Market. Organiza y realiza seguimiento de todas tus tareas diarias, semanales y mensuales." />
+        <title>Gestor de Tareas</title>
+        <meta name="description" content="Sistema de gestión de tareas. Organiza y realiza seguimiento de todas tus tareas diarias, semanales y mensuales." />
       </Helmet>
       
       <div className="min-h-screen bg-background pb-24">
@@ -21,7 +21,7 @@ const HomePage = () => {
         <main className="px-3 py-4 animate-fade-in">
           <div className="max-w-4xl mx-auto">
             <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
-              <h2 className="text-[18px] font-heading font-bold text-foreground mb-3">Bienvenido a Iciz Market</h2>
+              <h2 className="text-[18px] font-heading font-bold text-foreground mb-3">Bienvenido a Gestor de Tareas</h2>
               <p className="text-muted-foreground mb-6 leading-normal text-[13px]">
                 Gestiona tus tareas de forma eficiente. Usa la navegación superior para acceder rápidamente a tus tareas de hoy, esta semana o ver todas las tareas disponibles.
               </p>

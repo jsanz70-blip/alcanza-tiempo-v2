@@ -147,7 +147,7 @@ const ProjectsPage = () => {
   return (
     <>
       <Helmet>
-        <title>Proyectos - Iciz Market</title>
+        <title>Proyectos - Gestor de Tareas</title>
       </Helmet>
       
       <div className="min-h-screen bg-background pb-24 lg:pb-6">
