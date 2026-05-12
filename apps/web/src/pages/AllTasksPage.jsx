@@ -290,14 +290,53 @@ const AllTasksPage = () => {
               </div>
             ) : (
               <div className="space-y-6">
-                {renderListSection('Pendientes', 'Pendiente')}
-                {renderListSection('En Curso', 'En curso')}
-                {renderListSection('Completadas', 'Hecho')}
-                
-                <NoDateSection 
-                  tasks={tasksWithoutDate} 
-                  onAssignDate={handleAssignDate} 
-                />
+                {viewMode === 'grid' ? (
+                  <GridLayout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredTasks.length === 0 ? (
+                      <div className="col-span-full text-center py-8 bg-card rounded-xl border border-border shadow-sm">
+                        <p className="text-[13px] text-muted-foreground font-medium">No hay tareas que coincidan con los filtros</p>
+                      </div>
+                    ) : (
+                      filteredTasks.map((task) => (
+                        <div 
+                          key={task.id} 
+                          className={`task-card cursor-pointer group ${task.estado === 'Hecho' ? 'opacity-80' : ''}`}
+                          onClick={() => handleTaskClick(task)}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-muted-foreground bg-background px-1.5 py-0.5 rounded-md border border-border">#{task.numero}</span>
+                            </div>
+                          </div>
+                          
+                          <h3 className={`font-medium text-[14px] mb-3 leading-tight transition-colors ${task.estado === 'Hecho' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                            {task.tarea}
+                          </h3>
+                          
+                          <div className="flex flex-wrap gap-1.5 mb-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoryBadgeClass(task.categoria_codigo)}`}>
+                              {task.categoria_codigo}
+                            </span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getPriorityBadgeClass(task.prioridad)}`}>
+                              {task.prioridad}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </GridLayout>
+                ) : (
+                  <>
+                    {renderListSection('Pendientes', 'Pendiente')}
+                    {renderListSection('En Curso', 'En curso')}
+                    {renderListSection('Completadas', 'Hecho')}
+                    
+                    <NoDateSection 
+                      tasks={tasksWithoutDate} 
+                      onAssignDate={handleAssignDate} 
+                    />
+                  </>
+                )}
               </div>
             )}
           </div>
