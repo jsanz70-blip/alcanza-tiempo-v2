@@ -21,14 +21,18 @@ import FrequencySelectionDialog from '@/components/FrequencySelectionDialog.jsx'
 import AlarmIndicator from '@/components/AlarmIndicator.jsx';
 import OverdueBadge from '@/components/OverdueBadge.jsx';
 import TimeSlotSelector from '@/components/TimeSlotSelector.jsx';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import AvailableTasksSidebar from '@/components/AvailableTasksSidebar.jsx';
 import { filterTasksByDateExcludingCompleted } from '@/lib/filterTasksByDate.js';
 
 const TodayPage = () => {
   const [tasks, setTasks] = useState([]);
+  const [allTasks, setAllTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [dailyObjective, setDailyObjective] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('recurrentes');
+  const [isAvailableTasksOpen, setIsAvailableTasksOpen] = useState(false);
   
   const [viewMode, setViewMode] = useViewPreference('today', 'list');
 
@@ -65,16 +69,9 @@ const TodayPage = () => {
       const startOfDay = new Date(todayStr + 'T00:00:00.000Z');
       const endOfDay = new Date(todayStr + 'T23:59:59.999Z');
 
-      let tasksQuery = supabase.from('tareas').select('*').order('prioridad');
-      if (activeFilter === 'recurrentes') {
-        tasksQuery = tasksQuery.in('frecuencia', ['Diaria', 'Semanal', 'Mensual']);
-      } else {
-        tasksQuery = tasksQuery.eq('frecuencia', 'Puntual');
-      }
-
       const [projectsRes, tasksRes, objectivesRes] = await Promise.all([
         supabase.from('projects').select('*').order('nombre'),
-        tasksQuery,
+        supabase.from('tareas').select('*').order('prioridad'),
         supabase.from('daily_objectives').select('*').gte('fecha', startOfDay.toISOString()).lte('fecha', endOfDay.toISOString())
       ]);
 
@@ -100,8 +97,20 @@ const TodayPage = () => {
       }
       setDailyObjective(currentObjective);
 
-      const dateFilteredTasks = filterTasksByDateExcludingCompleted(tasksRes.data);
-      const sorted = dateFilteredTasks.sort((a, b) => {
+      setAllTasks(tasksRes.data);
+      
+      const filteredForView = tasksRes.data.filter(t => {
+        const matchesFilter = activeFilter === 'recurrentes' 
+          ? ['Diaria', 'Semanal', 'Mensual'].includes(t.frecuencia)
+          : t.frecuencia === 'Puntual';
+        
+        if (!matchesFilter) return false;
+        
+        const todayFiltered = filterTasksByDateExcludingCompleted([t]);
+        return todayFiltered.length > 0;
+      });
+
+      const sorted = filteredForView.sort((a, b) => {
         const priorityOrder = { 'Alta': 0, 'Media': 1, 'Baja': 2 };
         return priorityOrder[a.prioridad] - priorityOrder[b.prioridad];
       });
@@ -280,7 +289,7 @@ const TodayPage = () => {
       
       <div className="min-h-screen bg-background pb-40">
         <div className="sticky top-0 z-40 bg-popover border-b border-border shadow-sm">
-          <div className="px-3 py-4">
+          <div className="px-4 py-3 sm:py-4">
             <Header 
               title="Tareas de hoy"
               currentView={viewMode}
@@ -288,6 +297,14 @@ const TodayPage = () => {
               moduleName="today"
               actions={
                 <>
+                  <Button 
+                    variant="outline"
+                    size="sm" 
+                    onClick={() => setIsAvailableTasksOpen(true)}
+                    className="h-[32px] px-2"
+                  >
+                    <Plus className="w-4 h-4 md:mr-1" /> <span className="hidden md:inline">Añadir</span>
+                  </Button>
                   <Button 
                     size="sm" 
                     onClick={() => {
@@ -323,7 +340,7 @@ const TodayPage = () => {
           </div>
         </div>
         
-        <main className="px-3 py-4">
+        <main className="px-4 py-4">
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
@@ -379,6 +396,43 @@ const TodayPage = () => {
         onClose={() => setIsDetailPanelOpen(false)}
         onUpdate={handleDetailPanelUpdate}
       />
+
+      <Sheet open={isAvailableTasksOpen} onOpenChange={setIsAvailableTasksOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0">
+          <SheetHeader className="p-4 border-b">
+            <SheetTitle>Añadir tarea a Hoy</SheetTitle>
+          </SheetHeader>
+          <div className="p-4 h-full overflow-y-auto">
+            <p className="text-xs text-muted-foreground mb-4">Haz clic en una tarea para asignarla a hoy.</p>
+            <div className="space-y-3">
+              {allTasks
+                .filter(t => t.estado !== 'Hecho' && filterTasksByDateExcludingCompleted([t]).length === 0)
+                .map(task => (
+                  <div 
+                    key={task.id}
+                    className="bg-card border border-border p-3 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={async () => {
+                      await handleTaskUpdate(task.id, { fecha_vencimiento: new Date().toISOString() });
+                      setIsAvailableTasksOpen(false);
+                      fetchData();
+                    }}
+                  >
+                    <h4 className="text-sm font-medium">{task.tarea}</h4>
+                    <div className="flex gap-2 mt-1">
+                      <span className="text-[10px] text-muted-foreground">{task.prioridad}</span>
+                      <span className="text-[10px] text-muted-foreground">{task.frecuencia}</span>
+                    </div>
+                  </div>
+                ))}
+              {allTasks.filter(t => t.estado !== 'Hecho' && filterTasksByDateExcludingCompleted([t]).length === 0).length === 0 && (
+                <div className="text-center py-10">
+                  <p className="text-sm text-muted-foreground">No hay tareas pendientes disponibles para añadir.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <TimeSlotSelector 
         isOpen={isSlotSelectorOpen}

@@ -267,7 +267,7 @@ const AllTasksPage = () => {
       
       <div className="min-h-screen bg-background pb-24">
         <div className="sticky top-0 z-40 bg-popover border-b border-border shadow-sm">
-          <div className="px-3 py-4">
+          <div className="px-4 py-3 sm:py-4">
             <Header 
               title="Todas las tareas"
               currentView={viewMode}
@@ -300,7 +300,7 @@ const AllTasksPage = () => {
           </div>
         </div>
         
-        <main className="px-3 py-4">
+        <main className="px-4 py-4">
           <div key={viewMode} className="animate-fade-in view-transition">
             {loading ? (
               <div className="space-y-3">
@@ -309,7 +309,7 @@ const AllTasksPage = () => {
             ) : (
               <div className="space-y-6">
                 {viewMode === 'grid' ? (
-                  <GridLayout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <GridLayout className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4">
                     {filteredTasks.length === 0 ? (
                       <div className="col-span-full text-center py-8 bg-card rounded-xl border border-border shadow-sm">
                         <p className="text-[13px] text-muted-foreground font-medium">No hay tareas que coincidan con los filtros</p>

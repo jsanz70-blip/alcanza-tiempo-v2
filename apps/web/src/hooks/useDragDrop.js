@@ -1,10 +1,31 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+
+// Global state for dragging to allow cross-component communication
+let globalDraggingId = null;
+let globalDragSource = null;
+let globalListeners = new Set();
+
+const notifyListeners = () => {
+  globalListeners.forEach(listener => listener());
+};
 
 export const useDragDrop = () => {
-  const [draggingId, setDraggingId] = useState(null);
-  const [dragSource, setDragSource] = useState(null);
+  const [draggingId, setDraggingId] = useState(globalDraggingId);
+  const [dragSource, setDragSource] = useState(globalDragSource);
   const [dragOverTarget, setDragOverTarget] = useState(null);
   const [isValidDrop, setIsValidDrop] = useState(false);
+
+  useEffect(() => {
+    const updateLocalState = () => {
+      setDraggingId(globalDraggingId);
+      setDragSource(globalDragSource);
+    };
+    
+    globalListeners.add(updateLocalState);
+    return () => {
+      globalListeners.delete(updateLocalState);
+    };
+  }, []);
 
   const validateDrop = useCallback((source, target) => {
     if (!source || !target) return false;
@@ -12,6 +33,9 @@ export const useDragDrop = () => {
     // Cross-section specific rules
     if (source.type === 'task' && target.type === 'project') return true;
     if (source.type === 'task' && target.type === 'sidebar') return true; // to unassign
+    if (source.type === 'task' && target.type === 'slot') return true; // for daily objectives
+    if (source.type === 'slot-task' && target.type === 'sidebar') return true; // move from slot back to sidebar
+    
     if (source.type === 'kanban' && target.type === 'kanban') return true;
     if (source.type === 'week' && target.type === 'week') return true;
     if (source.type === 'project' && target.type === 'project') return true;
@@ -35,8 +59,9 @@ export const useDragDrop = () => {
     event.dataTransfer.setData('application/json', JSON.stringify(data));
     event.dataTransfer.effectAllowed = 'move';
     
-    setDraggingId(taskId);
-    setDragSource(sourceData);
+    globalDraggingId = taskId;
+    globalDragSource = sourceData;
+    notifyListeners();
 
     setTimeout(() => {
       if (event.target && event.target.classList) {
@@ -50,8 +75,8 @@ export const useDragDrop = () => {
     event.dataTransfer.dropEffect = 'move';
     
     setDragOverTarget(targetData);
-    setIsValidDrop(validateDrop(dragSource, targetData));
-  }, [dragSource, validateDrop]);
+    setIsValidDrop(validateDrop(globalDragSource, targetData));
+  }, [validateDrop]);
 
   const onDragLeave = useCallback((event, targetData) => {
     event.preventDefault();
@@ -63,12 +88,14 @@ export const useDragDrop = () => {
     event.preventDefault();
     
     const targetSnapshot = { ...targetData };
-    const sourceSnapshot = { ...dragSource };
+    const sourceSnapshot = globalDragSource ? { ...globalDragSource } : null;
+    
+    globalDraggingId = null;
+    globalDragSource = null;
+    notifyListeners();
     
     setDragOverTarget(null);
     setIsValidDrop(false);
-    setDraggingId(null);
-    setDragSource(null);
 
     try {
       const dataString = event.dataTransfer.getData('application/json');
@@ -85,11 +112,13 @@ export const useDragDrop = () => {
       console.error('Drop parse error:', error);
       return { success: false, error };
     }
-  }, [dragSource, validateDrop]);
+  }, [validateDrop]);
 
   const endDrag = useCallback((event) => {
-    setDraggingId(null);
-    setDragSource(null);
+    globalDraggingId = null;
+    globalDragSource = null;
+    notifyListeners();
+    
     setDragOverTarget(null);
     setIsValidDrop(false);
     
@@ -99,8 +128,16 @@ export const useDragDrop = () => {
   }, []);
 
   const getDropZoneClass = useCallback((targetData) => {
-    const targetId = typeof targetData === 'string' ? targetData : targetData?.id;
-    if (dragOverTarget?.id === targetId || dragOverTarget?.projectId === targetId || dragOverTarget?.type === targetData?.type) {
+    if (!dragOverTarget) return 'border-transparent';
+    
+    const isCurrentTarget = (
+      (targetData.id && dragOverTarget.id === targetData.id) ||
+      (targetData.projectId && dragOverTarget.projectId === targetData.projectId) ||
+      (targetData.slotId && dragOverTarget.slotId === targetData.slotId) ||
+      (targetData.type === dragOverTarget.type)
+    );
+
+    if (isCurrentTarget) {
       return isValidDrop 
         ? 'border-primary/50 bg-primary/5 shadow-inner' 
         : 'border-destructive/50 bg-destructive/5';

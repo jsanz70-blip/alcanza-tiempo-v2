@@ -109,36 +109,22 @@ const NewSlotModal = ({ isOpen, onClose, onSave, existingSlots = [], dailyObject
     setIsSubmitting(true);
 
     try {
-      const timeSlotPayload = {
-        name: formData.nombre.trim(),
-        start_time: formData.hora_inicio,
-        end_time: formData.hora_fin,
-        color: formData.color,
-        categoria: formData.categoria,
-        daily_objectives_id: dailyObjectiveId
-      };
-
-      const { data: createdSlot, error } = await supabase
-        .from('time_slots')
-        .insert(timeSlotPayload)
-        .select()
-        .single();
-        
-      if (error) throw error;
+      // Generate a unique ID for the new slot
+      const newSlotId = `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       const newFranjaSlot = {
-        id: createdSlot.id,
-        nombre: timeSlotPayload.name,
-        hora_inicio: timeSlotPayload.start_time,
-        hora_fin: timeSlotPayload.end_time,
-        color: timeSlotPayload.color,
-        categoria: timeSlotPayload.categoria,
+        id: newSlotId,
+        nombre: formData.nombre.trim(),
+        hora_inicio: formData.hora_inicio,
+        hora_fin: formData.hora_fin,
+        color: formData.color,
+        categoria: formData.categoria,
         tareas_ids: [],
         orden: existingSlots.length
       };
 
       await onSave(newFranjaSlot);
-      toast.success(`Franja ${timeSlotPayload.name} creada exitosamente`);
+      toast.success(`Franja ${newFranjaSlot.nombre} creada exitosamente`);
       onClose();
     } catch (error) {
       console.error('Error in NewSlotModal:', error);

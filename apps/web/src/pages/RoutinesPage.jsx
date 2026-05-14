@@ -4,7 +4,8 @@ import supabase from '@/lib/supabaseClient';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Info, ChevronDown, ChevronUp, Calendar, RefreshCw } from 'lucide-react';
+import { Info, ChevronDown, ChevronUp, Calendar, RefreshCw, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import Header from '@/components/Header.jsx';
 import { GridLayout } from '@/components/GridLayout.jsx';
 import { GridTaskCard } from '@/components/GridTaskCard.jsx';
@@ -212,17 +213,29 @@ const RoutinesPage = () => {
       
       <div className="min-h-screen bg-background pb-24">
         <div className="sticky top-0 z-40 bg-popover border-b border-border shadow-sm">
-          <div className="px-3 py-4">
+          <div className="px-4 py-3 sm:py-4">
             <Header 
               title="Rutinas"
               currentView={viewMode}
               onViewChange={setViewMode}
               moduleName="routines"
+              actions={
+                <Button 
+                  size="sm" 
+                  onClick={() => {
+                    setSelectedTaskToEdit({ isNew: true, frecuencia: 'Semanal' });
+                    setIsDetailPanelOpen(true);
+                  }}
+                  className="h-[32px] px-3 bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Plus className="w-4 h-4 md:mr-1" /> <span className="hidden md:inline">Nueva Rutina</span>
+                </Button>
+              }
             />
           </div>
         </div>
         
-        <main className="px-3 py-4">
+        <main className="px-4 py-4">
           <div key={viewMode} className="animate-fade-in view-transition">
             <div className="bg-card border border-border rounded-xl p-3 mb-6 flex items-start gap-2 shadow-sm">
               <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />

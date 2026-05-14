@@ -151,7 +151,7 @@ const ProjectsPage = () => {
       </Helmet>
       
       <div className="min-h-screen bg-background pb-24 lg:pb-6">
-        <div className="sticky top-0 z-40 bg-popover/90 backdrop-blur-lg border-b border-border shadow-sm px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="sticky top-0 z-40 bg-popover/90 backdrop-blur-lg border-b border-border shadow-sm px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 p-2.5 rounded-xl">
               <FolderKanban className="w-6 h-6 text-primary" />

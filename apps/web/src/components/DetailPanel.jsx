@@ -179,9 +179,9 @@ const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
       semana_actual: formData.semana_actual || false,
       notas: finalNotas,
       proyecto_id: formData.proyecto_id === 'none' ? null : formData.proyecto_id,
-      fecha_vencimiento: formData.fecha_vencimiento ? new Date(formData.fecha_vencimiento).toISOString() : "",
-      tipo_recurrencia: (!formData.tipo_recurrencia || formData.tipo_recurrencia === 'Sin recurrencia') ? "" : formData.tipo_recurrencia,
-      hora_alarma: alarmEnabled ? formData.hora_alarma : "",
+      fecha_vencimiento: formData.fecha_vencimiento ? new Date(formData.fecha_vencimiento).toISOString() : null,
+      tipo_recurrencia: (!formData.tipo_recurrencia || formData.tipo_recurrencia === 'Sin recurrencia') ? null : formData.tipo_recurrencia,
+      hora_alarma: alarmEnabled ? formData.hora_alarma : null,
       alarmas_historial: formData.alarmas_historial || []
     };
 

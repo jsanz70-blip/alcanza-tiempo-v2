@@ -4,8 +4,8 @@ import { ViewToggle } from '@/components/ViewToggle.jsx';
 const Header = ({ title, currentView, onViewChange, moduleName, actions, children }) => {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3 sm:gap-0">
-      <div className="flex flex-col">
-        <h1 className="text-[18px] md:text-[20px] font-heading font-bold text-foreground">{title}</h1>
+      <div className="flex flex-col min-w-0">
+        <h1 className="text-[16px] sm:text-[20px] font-heading font-bold text-foreground truncate">{title}</h1>
         {children}
       </div>
       

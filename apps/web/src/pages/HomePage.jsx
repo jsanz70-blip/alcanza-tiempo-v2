@@ -13,12 +13,12 @@ const HomePage = () => {
       <div className="min-h-screen bg-background pb-24">
         {/* El contenedor sticky asegura que el Header tenga visibilidad y formato consistente con las otras páginas */}
         <div className="sticky top-0 z-40 bg-popover border-b border-border shadow-sm">
-          <div className="px-3 py-4">
+          <div className="px-4 py-3 sm:py-4">
             <Header title="Inicio" />
           </div>
         </div>
         
-        <main className="px-3 py-4 animate-fade-in">
+        <main className="px-4 py-4 animate-fade-in">
           <div className="max-w-4xl mx-auto">
             <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
               <h2 className="text-[18px] font-heading font-bold text-foreground mb-3">Bienvenido a Gestor de Tareas</h2>
