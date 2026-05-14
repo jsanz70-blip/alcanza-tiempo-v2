@@ -9,9 +9,15 @@ import { toast } from 'sonner';
 import { Loader2, Trash2 } from 'lucide-react';
 
 const PALETTE = [
-  '#E8F5E9', '#E3F2FD', '#FFF3E0', 
-  '#FCE4EC', '#F3E5F5', '#FFFDE7', 
-  '#E0F2F1', '#FFEBEE', '#E8EAF6'
+  '#10B981', // Emerald
+  '#3B82F6', // Blue
+  '#F59E0B', // Amber
+  '#EF4444', // Red
+  '#8B5CF6', // Violet
+  '#EC4899', // Pink
+  '#06B6D4', // Cyan
+  '#F97316', // Orange
+  '#6366F1'  // Indigo
 ];
 
 const EditSlotModal = ({ isOpen, onClose, slot, onSave, onDelete, existingSlots = [] }) => {
@@ -20,36 +26,35 @@ const EditSlotModal = ({ isOpen, onClose, slot, onSave, onDelete, existingSlots 
     hora_inicio: '',
     hora_fin: '',
     color: '',
-    categoria: ''
+    proyecto_id: 'none'
   });
-  const [categories, setCategories] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen && slot) {
-      fetchCategories();
+      fetchProjects();
       setFormData({
         nombre: slot.nombre || '',
         hora_inicio: slot.hora_inicio || '',
         hora_fin: slot.hora_fin || '',
         color: slot.color || PALETTE[0],
-        categoria: slot.categoria || ''
+        proyecto_id: slot.proyecto_id || 'none'
       });
     }
   }, [isOpen, slot]);
 
-  const fetchCategories = async () => {
+  const fetchProjects = async () => {
     try {
       const { data, error } = await supabase
-        .from('categorias_objetivos')
+        .from('projects')
         .select('*')
-        .eq('activa', true)
         .order('nombre');
         
       if (error) throw error;
-      setCategories(data);
+      setProjects(data);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error fetching projects:', error);
     }
   };
 
@@ -83,18 +88,7 @@ const EditSlotModal = ({ isOpen, onClose, slot, onSave, onDelete, existingSlots 
     setIsSubmitting(true);
     
     try {
-      const { error } = await supabase
-        .from('time_slots')
-        .update({
-          name: formData.nombre.trim(),
-          start_time: formData.hora_inicio,
-          end_time: formData.hora_fin,
-          color: formData.color,
-          categoria: formData.categoria
-        })
-        .eq('id', slot.id);
-
-      if (error) throw error;
+      const selectedProject = projects.find(p => p.id === formData.proyecto_id);
 
       const updatedSlot = {
         ...slot,
@@ -102,7 +96,9 @@ const EditSlotModal = ({ isOpen, onClose, slot, onSave, onDelete, existingSlots 
         hora_inicio: formData.hora_inicio,
         hora_fin: formData.hora_fin,
         color: formData.color,
-        categoria: formData.categoria
+        proyecto_id: formData.proyecto_id === 'none' ? null : formData.proyecto_id,
+        proyecto_nombre: selectedProject ? selectedProject.nombre : null,
+        categoria: selectedProject ? selectedProject.nombre : null // keep for backward compatibility
       };
 
       await onSave(updatedSlot);
@@ -171,27 +167,28 @@ const EditSlotModal = ({ isOpen, onClose, slot, onSave, onDelete, existingSlots 
           </div>
 
           <div className="space-y-2">
-            <Label>Categoría</Label>
-            <Select value={formData.categoria} onValueChange={(v) => handleChange('categoria', v)} disabled={isSubmitting}>
+            <Label>Asociar a Proyecto</Label>
+            <Select value={formData.proyecto_id} onValueChange={(v) => handleChange('proyecto_id', v)} disabled={isSubmitting}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar categoría" />
+                <SelectValue placeholder="Seleccionar proyecto" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map(c => (
-                  <SelectItem key={c.id} value={c.nombre}>{c.nombre}</SelectItem>
+                <SelectItem value="none">Sin proyecto</SelectItem>
+                {projects.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label>Color de fondo</Label>
-            <div className="flex flex-wrap gap-2 mt-2">
+            <Label>Color de la franja</Label>
+            <div className="flex flex-wrap gap-3 mt-2">
               {PALETTE.map((c) => (
                 <button
                   key={c}
                   type="button"
-                  className={`w-8 h-8 rounded-full border-2 transition-all ${formData.color === c ? 'border-primary scale-110 shadow-sm' : 'border-transparent hover:scale-105'} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-9 h-9 rounded-full border-2 transition-all ${formData.color === c ? 'border-primary scale-110 shadow-md ring-2 ring-primary/20' : 'border-transparent hover:scale-105 shadow-sm'} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                   style={{ backgroundColor: c }}
                   onClick={() => !isSubmitting && handleChange('color', c)}
                   aria-label="Seleccionar color"
@@ -208,9 +205,9 @@ const EditSlotModal = ({ isOpen, onClose, slot, onSave, onDelete, existingSlots 
           </Button>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-primary hover:bg-primary/90">
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Guardar
+              Guardar Cambios
             </Button>
           </div>
         </DialogFooter>

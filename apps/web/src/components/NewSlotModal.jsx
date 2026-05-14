@@ -9,9 +9,15 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
 const PALETTE = [
-  '#E8F5E9', '#E3F2FD', '#FFF3E0', 
-  '#FCE4EC', '#F3E5F5', '#FFFDE7', 
-  '#E0F2F1', '#FFEBEE', '#E8EAF6'
+  '#10B981', // Emerald
+  '#3B82F6', // Blue
+  '#F59E0B', // Amber
+  '#EF4444', // Red
+  '#8B5CF6', // Violet
+  '#EC4899', // Pink
+  '#06B6D4', // Cyan
+  '#F97316', // Orange
+  '#6366F1'  // Indigo
 ];
 
 const NewSlotModal = ({ isOpen, onClose, onSave, existingSlots = [], dailyObjectiveId }) => {
@@ -20,39 +26,35 @@ const NewSlotModal = ({ isOpen, onClose, onSave, existingSlots = [], dailyObject
     hora_inicio: '09:00',
     hora_fin: '10:00',
     color: PALETTE[0],
-    categoria: ''
+    proyecto_id: 'none'
   });
-  const [categories, setCategories] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      fetchCategories();
+      fetchProjects();
       setFormData({
         nombre: '',
         hora_inicio: '09:00',
         hora_fin: '10:00',
         color: PALETTE[0],
-        categoria: ''
+        proyecto_id: 'none'
       });
     }
   }, [isOpen]);
 
-  const fetchCategories = async () => {
+  const fetchProjects = async () => {
     try {
       const { data, error } = await supabase
-        .from('categorias_objetivos')
+        .from('projects')
         .select('*')
-        .eq('activa', true)
         .order('nombre');
         
       if (error) throw error;
-      setCategories(data);
-      if (data.length > 0 && !formData.categoria) {
-        setFormData(prev => ({ ...prev, categoria: data[0].nombre }));
-      }
+      setProjects(data);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error fetching projects:', error);
     }
   };
 
@@ -85,7 +87,7 @@ const NewSlotModal = ({ isOpen, onClose, onSave, existingSlots = [], dailyObject
 
     const hexRegex = /^#([0-9A-F]{3}){1,2}$/i;
     if (!formData.color || !hexRegex.test(formData.color)) {
-      toast.error('El color debe ser un código hexadecimal válido (ej. #E8F5E9)');
+      toast.error('El color debe ser un código hexadecimal válido');
       return;
     }
 
@@ -111,6 +113,7 @@ const NewSlotModal = ({ isOpen, onClose, onSave, existingSlots = [], dailyObject
     try {
       // Generate a unique ID for the new slot
       const newSlotId = `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const selectedProject = projects.find(p => p.id === formData.proyecto_id);
 
       const newFranjaSlot = {
         id: newSlotId,
@@ -118,7 +121,9 @@ const NewSlotModal = ({ isOpen, onClose, onSave, existingSlots = [], dailyObject
         hora_inicio: formData.hora_inicio,
         hora_fin: formData.hora_fin,
         color: formData.color,
-        categoria: formData.categoria,
+        proyecto_id: formData.proyecto_id === 'none' ? null : formData.proyecto_id,
+        proyecto_nombre: selectedProject ? selectedProject.nombre : null,
+        categoria: selectedProject ? selectedProject.nombre : null, // keep for backward compatibility in view
         tareas_ids: [],
         orden: existingSlots.length
       };
@@ -175,27 +180,28 @@ const NewSlotModal = ({ isOpen, onClose, onSave, existingSlots = [], dailyObject
           </div>
 
           <div className="space-y-2">
-            <Label>Categoría (Opcional)</Label>
-            <Select value={formData.categoria} onValueChange={(v) => handleChange('categoria', v)} disabled={isSubmitting}>
+            <Label>Asociar a Proyecto</Label>
+            <Select value={formData.proyecto_id} onValueChange={(v) => handleChange('proyecto_id', v)} disabled={isSubmitting}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar categoría" />
+                <SelectValue placeholder="Seleccionar proyecto" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map(c => (
-                  <SelectItem key={c.id} value={c.nombre}>{c.nombre}</SelectItem>
+                <SelectItem value="none">Sin proyecto</SelectItem>
+                {projects.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label>Color de fondo <span className="text-destructive">*</span></Label>
-            <div className="flex flex-wrap gap-2 mt-2">
+            <Label>Color de la franja <span className="text-destructive">*</span></Label>
+            <div className="flex flex-wrap gap-3 mt-2">
               {PALETTE.map((c) => (
                 <button
                   key={c}
                   type="button"
-                  className={`w-8 h-8 rounded-full border-2 transition-all ${formData.color === c ? 'border-primary scale-110 shadow-sm' : 'border-transparent hover:scale-105'} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-9 h-9 rounded-full border-2 transition-all ${formData.color === c ? 'border-primary scale-110 shadow-md ring-2 ring-primary/20' : 'border-transparent hover:scale-105 shadow-sm'} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                   style={{ backgroundColor: c }}
                   onClick={() => !isSubmitting && handleChange('color', c)}
                   aria-label={`Seleccionar color ${c}`}
@@ -208,7 +214,7 @@ const NewSlotModal = ({ isOpen, onClose, onSave, existingSlots = [], dailyObject
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-primary hover:bg-primary/90">
             {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {isSubmitting ? 'Guardando...' : 'Crear Franja'}
           </Button>

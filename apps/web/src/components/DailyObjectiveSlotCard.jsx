@@ -27,22 +27,22 @@ const DailyObjectiveSlotCard = ({ slot, tasks, onEditSlot, onRemoveTask, onDropT
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-background/60 backdrop-blur-md px-2 py-1 rounded-md text-foreground font-medium text-[12px] shadow-sm">
-            <Clock className="w-3.5 h-3.5 opacity-70" />
+          <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-2 py-1 rounded-md text-white font-medium text-[12px] shadow-sm">
+            <Clock className="w-3.5 h-3.5 opacity-90" />
             {slot.hora_inicio} - {slot.hora_fin}
           </div>
-          <h3 className="font-heading font-semibold text-[15px] text-foreground mix-blend-hard-light dark:mix-blend-normal">
+          <h3 className="font-heading font-semibold text-[15px] text-white drop-shadow-sm">
             {slot.nombre}
           </h3>
-          {slot.categoria && (
-            <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-background/40 text-foreground mix-blend-hard-light dark:mix-blend-normal">
-              {slot.categoria}
+          {(slot.proyecto_nombre || slot.categoria) && (
+            <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30 backdrop-blur-sm uppercase tracking-wider">
+              {slot.proyecto_nombre || slot.categoria}
             </span>
           )}
         </div>
         
         <div className="flex items-center gap-1">
-          <span className="text-[12px] font-medium text-foreground/60 mr-2">
+          <span className="text-[12px] font-medium text-white/80 mr-2">
             {tasks.length} tareas
           </span>
           <button
@@ -50,11 +50,11 @@ const DailyObjectiveSlotCard = ({ slot, tasks, onEditSlot, onRemoveTask, onDropT
               e.stopPropagation();
               onEditSlot(slot);
             }}
-            className="p-1.5 text-foreground/60 hover:text-foreground hover:bg-background/40 rounded-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+            className="p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
           >
             <Edit2 className="w-4 h-4" />
           </button>
-          <button className="p-1.5 text-foreground/60 hover:text-foreground rounded-md transition-colors">
+          <button className="p-1.5 text-white/70 hover:text-white rounded-md transition-colors">
             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
         </div>
