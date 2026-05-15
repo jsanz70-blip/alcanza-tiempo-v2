@@ -57,6 +57,9 @@ const ProjectsPage = () => {
     const task = tasks.find(t => t.id === taskId);
     if (task?.proyecto_id === projectId) return;
 
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, proyecto_id: projectId } : t));
+
     try {
       const { error } = await supabase
         .from('tareas')
@@ -69,11 +72,18 @@ const ProjectsPage = () => {
       toast.success(`Tarea asignada a ${targetProject.nombre}`);
       fetchData();
     } catch (error) {
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, proyecto_id: task?.proyecto_id || null } : t));
       toast.error('Error al mover tarea');
     }
   };
 
   const handleRemoveTaskFromProject = async (taskId) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, proyecto_id: null } : t));
+
     try {
       const { error } = await supabase
         .from('tareas')
@@ -85,12 +95,17 @@ const ProjectsPage = () => {
       toast.success('Tarea desasignada del proyecto');
       fetchData();
     } catch (error) {
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, proyecto_id: task.proyecto_id } : t));
       toast.error('Error al desasignar tarea');
     }
   };
 
   const handleToggleTaskStatus = async (task) => {
     const newStatus = task.estado === 'Hecho' ? 'Pendiente' : 'Hecho';
+    
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, estado: newStatus } : t));
+
     try {
       const { error } = await supabase
         .from('tareas')
@@ -102,6 +117,7 @@ const ProjectsPage = () => {
       toast.success(`Tarea marcada como ${newStatus}`);
       fetchData();
     } catch (error) {
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, estado: task.estado } : t));
       toast.error('Error al actualizar tarea');
     }
   };
@@ -114,6 +130,9 @@ const ProjectsPage = () => {
     
     if (!task?.proyecto_id) return; // already unassigned
 
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, proyecto_id: null } : t));
+
     try {
       const { error } = await supabase
         .from('tareas')
@@ -125,6 +144,7 @@ const ProjectsPage = () => {
       toast.success('Tarea devuelta a tareas disponibles');
       fetchData();
     } catch (error) {
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, proyecto_id: task.proyecto_id } : t));
       toast.error('Error al desasignar tarea');
     }
   };
@@ -183,20 +203,9 @@ const ProjectsPage = () => {
           </div>
         </div>
 
-        <main className="max-w-7xl mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Sidebar - Available Tasks */}
-          <div className="lg:col-span-4 h-full"
-               onDragOver={(e) => onDragOver(e, { type: 'sidebar' })}
-               onDragLeave={(e) => onDragLeave(e, { type: 'sidebar' })}
-               onDrop={(e) => {
-                 const result = onDrop(e, { type: 'sidebar' });
-                 if (result.success) handleDropTaskToSidebar(result.data);
-               }}>
-            <AvailableTasksSidebar tasks={unassignedTasks} title="Tareas Disponibles" />
-          </div>
-
-          {/* Right Main Content - Projects */}
-          <div className="lg:col-span-8 space-y-6">
+        <main className="max-w-7xl mx-auto p-4 sm:p-6 flex flex-col gap-8 items-start">
+          {/* Top Section - Projects */}
+          <div className="w-full space-y-6">
             {loading ? (
               Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)
             ) : filteredProjects.length === 0 ? (
@@ -220,12 +229,22 @@ const ProjectsPage = () => {
                   <div 
                     className={`p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-muted/30 transition-colors ${getDropZoneClass({ type: 'project', projectId: project.id })}`}
                     onClick={() => setExpandedProject(isExpanded ? null : project.id)}
-                    onDragOver={(e) => !isExpanded && onDragOver(e, { type: 'project', projectId: project.id })}
-                    onDragLeave={(e) => !isExpanded && onDragLeave(e, { type: 'project', projectId: project.id })}
+                    onDragOver={(e) => {
+                      if (!isExpanded) {
+                        e.preventDefault();
+                        onDragOver(e, { type: 'project', projectId: project.id });
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      if (!isExpanded) {
+                        onDragLeave(e, { type: 'project', projectId: project.id });
+                      }
+                    }}
                     onDrop={(e) => {
                       if (!isExpanded) {
+                        e.preventDefault();
                         const result = onDrop(e, { type: 'project', projectId: project.id });
-                        if (result.success) handleDropTaskToProject(project.id, result.data);
+                        if (result?.success) handleDropTaskToProject(project.id, result.data);
                       }
                     }}
                   >
@@ -267,19 +286,23 @@ const ProjectsPage = () => {
                       >
                         <div 
                           className={`p-5 min-h-[150px] transition-colors ${getDropZoneClass({ type: 'project', projectId: project.id })}`}
-                          onDragOver={(e) => onDragOver(e, { type: 'project', projectId: project.id })}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            onDragOver(e, { type: 'project', projectId: project.id });
+                          }}
                           onDragLeave={(e) => onDragLeave(e, { type: 'project', projectId: project.id })}
                           onDrop={(e) => {
+                            e.preventDefault();
                             const result = onDrop(e, { type: 'project', projectId: project.id });
-                            if (result.success) handleDropTaskToProject(project.id, result.data);
+                            if (result?.success) handleDropTaskToProject(project.id, result.data);
                           }}
                         >
                           {stats.tasks.length === 0 ? (
-                            <div className="h-full py-8 flex flex-col items-center justify-center text-muted-foreground">
+                            <div className="h-full py-8 flex flex-col items-center justify-center text-muted-foreground pointer-events-none">
                               <div className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-8 text-center max-w-sm w-full bg-background/50">
                                 <LayoutList className="w-8 h-8 mx-auto mb-3 opacity-40" />
                                 <p className="text-sm font-medium text-foreground">Aún no hay tareas en este proyecto</p>
-                                <p className="text-xs mt-1">Arrastra tareas desde el panel lateral izquierdo para asignarlas aquí.</p>
+                                <p className="text-xs mt-1">Arrastra tareas desde el panel inferior para asignarlas aquí.</p>
                               </div>
                             </div>
                           ) : (
@@ -303,6 +326,18 @@ const ProjectsPage = () => {
                 </div>
               );
             })}
+          </div>
+
+          {/* Bottom Section - Available Tasks */}
+          <div className="w-full"
+               onDragOver={(e) => { e.preventDefault(); onDragOver(e, { type: 'sidebar' }); }}
+               onDragLeave={(e) => onDragLeave(e, { type: 'sidebar' })}
+               onDrop={(e) => {
+                 e.preventDefault();
+                 const result = onDrop(e, { type: 'sidebar' });
+                 if (result?.success) handleDropTaskToSidebar(result.data);
+               }}>
+            <AvailableTasksSidebar tasks={unassignedTasks} title="Tareas Disponibles" />
           </div>
         </main>
       </div>
