@@ -56,7 +56,7 @@ export const useDragDrop = () => {
 
   const onDragStart = useCallback((event, taskId, sourceData) => {
     const data = { taskId, source: sourceData };
-    event.dataTransfer.setData('application/json', JSON.stringify(data));
+    event.dataTransfer.setData('text/plain', JSON.stringify(data));
     event.dataTransfer.effectAllowed = 'move';
     
     globalDraggingId = taskId;
@@ -72,6 +72,7 @@ export const useDragDrop = () => {
 
   const onDragOver = useCallback((event, targetData) => {
     event.preventDefault();
+    event.stopPropagation();
     event.dataTransfer.dropEffect = 'move';
     
     setDragOverTarget(targetData);
@@ -80,15 +81,18 @@ export const useDragDrop = () => {
 
   const onDragLeave = useCallback((event, targetData) => {
     event.preventDefault();
+    event.stopPropagation();
     setDragOverTarget(null);
     setIsValidDrop(false);
   }, []);
 
   const onDrop = useCallback((event, targetData) => {
     event.preventDefault();
+    event.stopPropagation();
     
     const targetSnapshot = { ...targetData };
     const sourceSnapshot = globalDragSource ? { ...globalDragSource } : null;
+    const draggingIdSnapshot = globalDraggingId;
     
     globalDraggingId = null;
     globalDragSource = null;
@@ -98,10 +102,17 @@ export const useDragDrop = () => {
     setIsValidDrop(false);
 
     try {
-      const dataString = event.dataTransfer.getData('application/json');
-      if (!dataString) return { success: false, error: 'No data transferred' };
+      let parsedData;
+      const dataString = event.dataTransfer.getData('text/plain');
       
-      const parsedData = JSON.parse(dataString);
+      if (dataString) {
+        parsedData = JSON.parse(dataString);
+      } else if (sourceSnapshot && draggingIdSnapshot) {
+        // Fallback for environments where dataTransfer is lost
+        parsedData = { taskId: draggingIdSnapshot, source: sourceSnapshot };
+      } else {
+        return { success: false, error: 'No data transferred' };
+      }
       
       if (!validateDrop(parsedData.source || sourceSnapshot, targetSnapshot)) {
         return { success: false, error: 'Invalid drop target' };
