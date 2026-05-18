@@ -32,6 +32,23 @@ const WeekPage = () => {
 
   useEffect(() => {
     fetchTasks();
+
+    // Subscribe to real-time changes in tareas
+    const channel = supabase
+      .channel('week-tasks-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tareas' },
+        (payload) => {
+          console.log('Realtime change received in WeekPage:', payload);
+          fetchTasks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const groupedTasks = useMemo(() => groupTasksByWeekDay(tasks), [tasks]);
@@ -365,7 +382,10 @@ const WeekPage = () => {
         task={selectedTaskToEdit}
         isOpen={isDetailPanelOpen}
         onClose={() => setIsDetailPanelOpen(false)}
-        onUpdate={handleDetailPanelUpdate}
+        onUpdate={(updatedTask, isDeleted) => {
+          handleDetailPanelUpdate(updatedTask, isDeleted);
+          fetchTasks();
+        }}
       />
     </>
   );

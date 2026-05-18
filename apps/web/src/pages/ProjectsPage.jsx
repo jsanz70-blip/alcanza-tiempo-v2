@@ -83,6 +83,35 @@ const ProjectsPage = () => {
 
   useEffect(() => {
     fetchData();
+
+    const tasksChannel = supabase
+      .channel('projects-tasks-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tareas' },
+        () => {
+          console.log('Realtime tasks update in ProjectsPage');
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    const projectsChannel = supabase
+      .channel('projects-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'projects' },
+        () => {
+          console.log('Realtime projects update in ProjectsPage');
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(tasksChannel);
+      supabase.removeChannel(projectsChannel);
+    };
   }, []);
 
   const fetchData = async () => {

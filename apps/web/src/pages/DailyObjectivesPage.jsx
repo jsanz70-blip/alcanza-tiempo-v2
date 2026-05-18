@@ -33,6 +33,35 @@ const DailyObjectivesPage = () => {
   
   useEffect(() => {
     fetchDataForDate(selectedDate);
+
+    const tasksChannel = supabase
+      .channel('daily-objectives-tasks-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tareas' },
+        () => {
+          console.log('Realtime tasks update in DailyObjectivesPage');
+          fetchDataForDate(selectedDate);
+        }
+      )
+      .subscribe();
+
+    const objectivesChannel = supabase
+      .channel('daily-objectives-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'daily_objectives' },
+        () => {
+          console.log('Realtime daily_objectives update in DailyObjectivesPage');
+          fetchDataForDate(selectedDate);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(tasksChannel);
+      supabase.removeChannel(objectivesChannel);
+    };
   }, [selectedDate]);
 
   const fetchDataForDate = async (date) => {
@@ -445,7 +474,10 @@ const DailyObjectivesPage = () => {
           task={taskToEdit}
           isOpen={!!taskToEdit}
           onClose={() => setTaskToEdit(null)}
-          onUpdate={handleDetailPanelUpdate}
+          onUpdate={(updatedTask, isDeleted) => {
+            handleDetailPanelUpdate(updatedTask, isDeleted);
+            fetchDataForDate(selectedDate);
+          }}
         />
       )}
     </>

@@ -57,6 +57,23 @@ const AllTasksPage = () => {
 
   useEffect(() => {
     fetchData();
+
+    // Subscribe to real-time changes in tareas
+    const channel = supabase
+      .channel('all-tasks-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tareas' },
+        (payload) => {
+          console.log('Realtime change received in AllTasksPage:', payload);
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -124,7 +141,8 @@ const AllTasksPage = () => {
   const hasActiveFilters = searchQuery || selectedCategory !== 'Todas' || selectedFrequency !== 'Todas' || selectedPriority !== 'Todas' || selectedBloque !== 'Todos';
 
   const handleTaskClick = (task) => {
-    if (task.id.startsWith('temp-')) {
+    console.log("handleTaskClick called with:", task);
+    if (String(task.id).startsWith('temp-')) {
       toast.info('Guardando tarea, por favor espera un momento...');
       return;
     }

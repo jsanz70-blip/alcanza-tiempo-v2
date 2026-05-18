@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Save, Trash2, Loader2, FolderKanban, Plus, X, Bell, History, CheckCircle } from 'lucide-react';
+import { Save, Trash2, Loader2, FolderKanban, Plus, X, Bell, History, CheckCircle, Clock } from 'lucide-react';
 import ProjectForm from './ProjectForm.jsx';
 import { useRecurrence } from '@/hooks/useRecurrence.js';
 
@@ -21,6 +21,7 @@ const ESTADOS = ['Pendiente', 'En curso', 'Esperando', 'Hecho'];
 const RECURRENCE_TYPES = ['Sin recurrencia', 'Diaria', 'Semanal', 'Quincenal', 'Mensual', 'Semestral', 'Anual'];
 
 const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
+  console.log("DetailPanel Render - task:", task, "isOpen:", isOpen);
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -32,11 +33,115 @@ const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
   
   const { calculateNextDate } = useRecurrence();
 
+  const [dailyRecord, setDailyRecord] = useState(null);
+  const [availableSlots, setAvailableSlots] = useState([]);
+
+  const fetchDailyObjectivesAndSlots = async (dateStr) => {
+    if (!dateStr) {
+      setAvailableSlots([]);
+      setDailyRecord(null);
+      return;
+    }
+    try {
+      const startOfDay = new Date(dateStr + 'T00:00:00.000Z');
+      const endOfDay = new Date(dateStr + 'T23:59:59.999Z');
+      
+      const { data, error } = await supabase
+        .from('daily_objectives')
+        .select('*')
+        .gte('fecha', startOfDay.toISOString())
+        .lte('fecha', endOfDay.toISOString());
+        
+      if (error) throw error;
+      
+      let record = data?.[0];
+      
+      if (!record) {
+        let templateFranjas = [];
+        const { data: recentDays } = await supabase
+          .from('daily_objectives')
+          .select('*')
+          .order('fecha', { ascending: false })
+          .limit(10);
+          
+        if (recentDays && recentDays.length > 0) {
+          const dayWithFranjas = recentDays.find(d => {
+            let f = [];
+            if (d.franjas) {
+              f = typeof d.franjas === 'string' ? JSON.parse(d.franjas) : d.franjas;
+            }
+            return Array.isArray(f) && f.length > 0;
+          });
+          
+          if (dayWithFranjas) {
+            const parsed = typeof dayWithFranjas.franjas === 'string'
+              ? JSON.parse(dayWithFranjas.franjas)
+              : dayWithFranjas.franjas;
+              
+            templateFranjas = parsed.map(slot => ({
+              ...slot,
+              tareas_ids: []
+            }));
+          }
+        }
+        
+        const payload = {
+          fecha: dateStr + 'T12:00:00.000Z',
+          franjas: templateFranjas
+        };
+        
+        const { data: newRecord, error: insertErr } = await supabase
+          .from('daily_objectives')
+          .insert(payload)
+          .select()
+          .single();
+          
+        if (!insertErr && newRecord) {
+          record = newRecord;
+        }
+      }
+      
+      if (record) {
+        setDailyRecord(record);
+        let parsedFranjas = [];
+        if (record.franjas) {
+          parsedFranjas = typeof record.franjas === 'string'
+            ? JSON.parse(record.franjas)
+            : record.franjas;
+        }
+        setAvailableSlots(parsedFranjas);
+        
+        // Find if this task is already in any of the slots
+        if (task && task.id) {
+          const currentSlot = parsedFranjas.find(slot => 
+            slot.tareas_ids && slot.tareas_ids.map(String).includes(String(task.id))
+          );
+          if (currentSlot) {
+            setFormData(prev => ({ ...prev, franja_id: currentSlot.id }));
+          } else {
+            setFormData(prev => ({ ...prev, franja_id: 'none' }));
+          }
+        } else {
+          setFormData(prev => ({ ...prev, franja_id: 'none' }));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching daily objectives in DetailPanel:', err);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchProjects();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const targetDate = formData.fecha_vencimiento || new Date().toISOString().split('T')[0];
+      fetchDailyObjectivesAndSlots(targetDate);
+    }
+  }, [formData.fecha_vencimiento, isOpen, task]);
 
   useEffect(() => {
     if (isOpen) {
@@ -143,11 +248,51 @@ const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
     window.dispatchEvent(new CustomEvent('TEST_ALARM', { detail: mockTask }));
   };
 
+  const saveTimeSlotAssociation = async (savedTask) => {
+    if (formData.franja_id !== undefined && dailyRecord) {
+      try {
+        let parsedFranjas = [];
+        if (dailyRecord.franjas) {
+          parsedFranjas = typeof dailyRecord.franjas === 'string'
+            ? JSON.parse(dailyRecord.franjas)
+            : dailyRecord.franjas;
+        }
+        
+        const taskIdStr = String(savedTask.id);
+        
+        // Remove task from any existing slot in this day's record
+        const updatedFranjas = parsedFranjas.map(slot => {
+          const cleanTareasIds = (slot.tareas_ids || []).filter(id => String(id) !== taskIdStr);
+          if (slot.id === formData.franja_id) {
+            cleanTareasIds.push(savedTask.id);
+          }
+          return { ...slot, tareas_ids: cleanTareasIds };
+        });
+        
+        const { error } = await supabase
+          .from('daily_objectives')
+          .update({ franjas: updatedFranjas })
+          .eq('id', dailyRecord.id);
+          
+        if (error) throw error;
+      } catch (err) {
+        console.error('Error saving time slot association:', err);
+        toast.warning('Tarea guardada, pero no se pudo asignar la franja horaria');
+      }
+    }
+  };
+
   const handleSave = async () => {
     if (!formData.tarea || !formData.tarea.trim()) {
       setErrors({ tarea: true });
       toast.error('El nombre de la tarea no puede estar vacío');
       return;
+    }
+
+    // If a franja is selected but no due date is provided, default due date to today
+    if (formData.franja_id && formData.franja_id !== 'none' && !formData.fecha_vencimiento) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      formData.fecha_vencimiento = todayStr;
     }
 
     if (alarmEnabled) {
@@ -219,6 +364,7 @@ const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
           .single();
           
         if (error) throw error;
+        await saveTimeSlotAssociation(data);
         onUpdate(data);
       } else {
         dataToSave.numero = Math.floor(100000 + Math.random() * 900000).toString();
@@ -229,6 +375,7 @@ const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
           .single();
           
         if (error) throw error;
+        await saveTimeSlotAssociation(data);
         onUpdate(data);
         toast.success('Tarea creada');
       }
@@ -266,7 +413,7 @@ const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
     }
   };
 
-  const showProjectField = ['Puntual', 'Meta'].includes(formData.frecuencia);
+  const showProjectField = true;
   const selectedProject = projects.find(p => p.id === formData.proyecto_id);
 
   const getStatusText = () => {
@@ -444,6 +591,30 @@ const DetailPanel = ({ task, isOpen, onClose, onUpdate }) => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+            )}
+
+            {availableSlots && availableSlots.length > 0 && (
+              <div className="space-y-2 p-3 bg-card border border-border rounded-xl">
+                <Label className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-primary" /> Franja Horaria (Mi Día)
+                </Label>
+                <Select value={formData.franja_id || 'none'} onValueChange={(v) => handleChange('franja_id', v)}>
+                  <SelectTrigger className="h-[48px] bg-background border-border text-[14px] text-foreground flex-1">
+                    <SelectValue placeholder="Seleccionar franja" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin franja asignada</SelectItem>
+                    {availableSlots.map(slot => (
+                      <SelectItem key={slot.id} value={slot.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: slot.color || 'var(--primary)' }} />
+                          <span>{slot.nombre} {slot.hora_inicio && slot.hora_fin ? `(${slot.hora_inicio} - ${slot.hora_fin})` : ''}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
             
