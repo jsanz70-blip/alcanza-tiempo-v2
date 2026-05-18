@@ -1,13 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { CheckCircle2, CalendarDays, LayoutList, Target, ListTodo, FolderKanban } from 'lucide-react';
+import { ClipboardList, CalendarDays, LayoutList, Target, ListTodo, FolderKanban } from 'lucide-react';
 
 const BottomNavigation = () => {
   const navItems = [
-    { path: '/hoy', label: 'Hoy', icon: CheckCircle2 },
+    { path: '/checklist', label: 'Check List', icon: ClipboardList },
+    { path: '/mi-dia', label: 'Mi día', icon: Target },
     { path: '/semana', label: 'Semana', icon: CalendarDays },
     { path: '/todas', label: 'Todas', icon: LayoutList },
-    { path: '/daily-objectives', label: 'Objetivos', icon: Target },
     { path: '/projects', label: 'Proyectos', icon: FolderKanban },
     { path: '/rutinas', label: 'Rutinas', icon: ListTodo },
   ];

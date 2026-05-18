@@ -74,9 +74,44 @@ const DailyObjectivesPage = () => {
 
       // Create record if it doesn't exist
       if (!currentRecord) {
+        let templateFranjas = [];
+        try {
+          // Look back in the database for recent daily objectives to use as a template
+          const { data: recentDays } = await supabase
+            .from('daily_objectives')
+            .select('*')
+            .order('fecha', { ascending: false })
+            .limit(10);
+
+          if (recentDays && recentDays.length > 0) {
+            // Find the most recent day that has a non-empty franjas array
+            const dayWithFranjas = recentDays.find(d => {
+              let f = [];
+              if (d.franjas) {
+                f = typeof d.franjas === 'string' ? JSON.parse(d.franjas) : d.franjas;
+              }
+              return Array.isArray(f) && f.length > 0;
+            });
+
+            if (dayWithFranjas) {
+              const parsed = typeof dayWithFranjas.franjas === 'string'
+                ? JSON.parse(dayWithFranjas.franjas)
+                : dayWithFranjas.franjas;
+
+              // Copy slots but reset task lists for the new day
+              templateFranjas = parsed.map(slot => ({
+                ...slot,
+                tareas_ids: [] // Clean tasks copy
+              }));
+            }
+          }
+        } catch (templateErr) {
+          console.error('Error fetching template franjas:', templateErr);
+        }
+
         const payload = {
           fecha: dateStr + 'T12:00:00.000Z',
-          franjas: []
+          franjas: templateFranjas
         };
         
         const { data, error } = await supabase
@@ -87,7 +122,10 @@ const DailyObjectivesPage = () => {
           
         if (error) throw error;
         currentRecord = data;
-        toast.success('Registro del día inicializado');
+        toast.success(templateFranjas.length > 0 
+          ? 'Registro inicializado con plantilla predefinida' 
+          : 'Registro del día inicializado'
+        );
       }
 
       setDailyRecord(currentRecord);
@@ -266,7 +304,7 @@ const DailyObjectivesPage = () => {
   return (
     <>
       <Helmet>
-        <title>Objetivos del Día - Gestor de Tareas</title>
+        <title>Mi Día - Gestor de Tareas</title>
         <meta name="description" content="Organiza tu día en franjas horarias y asigna tareas." />
       </Helmet>
       
@@ -275,7 +313,7 @@ const DailyObjectivesPage = () => {
           <div className="px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="flex items-center gap-2">
               <Target className="w-6 h-6 text-primary" />
-              <h1 className="text-xl font-heading font-bold text-foreground">Objetivos del Día</h1>
+              <h1 className="text-xl font-heading font-bold text-foreground">Mi Día</h1>
               {loading && <Loader2 className="w-4 h-4 text-muted-foreground animate-spin ml-2" />}
             </div>
             
