@@ -4,8 +4,8 @@ import { toast } from 'sonner'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY'
 
-// Real Supabase client instance
-const realSupabase = createClient(supabaseUrl, supabaseAnonKey)
+// Real Supabase client instance (exported for emergency restore in forceSWUpdate)
+export const realSupabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Global list of active realtime callbacks
 const realtimeCallbacks = [];
