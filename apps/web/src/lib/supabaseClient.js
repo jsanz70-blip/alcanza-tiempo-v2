@@ -166,14 +166,20 @@ export async function triggerSync() {
   localStorage.setItem('offline_mutations_queue', JSON.stringify(failedItems));
   
   if (failedItems.length === 0) {
-    // Refresh local cache with latest cloud data for all modified tables
+    // Merge cloud data with local pending items (don't overwrite)
     const modifiedTables = [...new Set(queue.map(item => item.table))];
     for (const table of modifiedTables) {
       try {
+        // Use realSupabase directly to avoid proxy loop
         const { data, error } = await realSupabase.from(table).select('*');
         if (!error && data) {
-          saveToCache(table, data);
-          // Notify the UI to refresh
+          const cached = loadFromCache(table);
+          const serverIds = new Set(data.map(r => r.id));
+          // Keep local items with temp IDs (pending inserts)
+          const pendingLocals = cached.filter(r => typeof r.id === 'string' && r.id.startsWith('temp-'));
+          const merged = [...data, ...pendingLocals.filter(p => !serverIds.has(p.id))];
+          saveToCache(table, merged);
+          notifyRealtimeSync(table, 'UPDATE', null, null);
           triggerRealtimeCallbacks(table, { eventType: 'UPDATE', new: null });
         }
       } catch (e) {
@@ -310,13 +316,28 @@ class OfflineQueryChain {
           return result;
         }
 
-        // Cache successful select results
+        // Merge select results with local cache instead of overwriting
         if (this.operation === 'select' && result && result.data) {
-          saveToCache(this.table, result.data);
+          const cached = loadFromCache(this.table);
+          const serverIds = new Set(result.data.map(r => r.id));
+          
+          // Keep records that exist in cache but not in server (pending inserts)
+          const pendingLocals = cached.filter(r => typeof r.id === 'string' && r.id.startsWith('temp-'));
+          
+          // Merge: server data + pending local items not yet on server
+          const merged = [
+            ...result.data,
+            ...pendingLocals.filter(p => !serverIds.has(p.id))
+          ];
+          
+          saveToCache(this.table, merged);
         }
 
-        // Trigger sync of any pending queue changes on successful online mutation
+        // Trigger sync of pending queue changes after any successful operation
         if (this.operation !== 'select') {
+          triggerSync();
+        } else {
+          // Also check for pending sync after select (in case we missed something)
           triggerSync();
         }
 

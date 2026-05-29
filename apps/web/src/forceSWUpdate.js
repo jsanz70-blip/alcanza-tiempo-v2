@@ -1,7 +1,9 @@
 /**
- * Este script se ejecuta en App.jsx para forzar la actualización
- * del Service Worker y limpiar cachés antiguas.
- * Es crítico para que la PWA descargue el nuevo código con Realtime.
+ * Fuerza la actualización del Service Worker para que la PWA
+ * descargue la nueva versión del código.
+ * 
+ * IMPORTANTE: SOLO limpia las cachés de archivos estáticos del SW.
+ * NO toca localStorage (datos del usuario).
  */
 export function forceServiceWorkerUpdate() {
   if ('serviceWorker' in navigator) {
@@ -19,7 +21,6 @@ export function forceServiceWorkerUpdate() {
       
       // Check if there's a waiting service worker (new version)
       if (registration.waiting) {
-        // Send skip waiting message
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }
     }).catch(function(error) {
@@ -33,13 +34,14 @@ export function forceServiceWorkerUpdate() {
     });
   }
   
-  // Clear old caches
+  // SOLO limpia cachés de archivos estáticos del Service Worker
+  // NO toca localStorage - los datos de usuario están a salvo
   if ('caches' in window) {
     caches.keys().then(function(cacheNames) {
       cacheNames.forEach(function(cacheName) {
         if (cacheName.startsWith('tareas-app-')) {
           caches.delete(cacheName).then(function() {
-            console.log('[Cache] Caché antigua eliminada:', cacheName);
+            console.log('[Cache] Caché de assets eliminada:', cacheName);
           });
         }
       });
