@@ -321,16 +321,22 @@ class OfflineQueryChain {
           const cached = loadFromCache(this.table);
           const serverIds = new Set(result.data.map(r => r.id));
           
-          // Keep records that exist in cache but not in server (pending inserts)
-          const pendingLocals = cached.filter(r => typeof r.id === 'string' && r.id.startsWith('temp-'));
-          
-          // Merge: server data + pending local items not yet on server
-          const merged = [
-            ...result.data,
-            ...pendingLocals.filter(p => !serverIds.has(p.id))
-          ];
-          
-          saveToCache(this.table, merged);
+          // If cache was cleared but we have server data, restore it all
+          if (cached.length === 0 && result.data.length > 0) {
+            console.log(`[Cache] Restaurando ${result.data.length} registros de la tabla ${this.table} desde Supabase`);
+            saveToCache(this.table, result.data);
+          } else {
+            // Keep records that exist in cache but not in server (pending inserts)
+            const pendingLocals = cached.filter(r => typeof r.id === 'string' && r.id.startsWith('temp-'));
+            
+            // Merge: server data + pending local items not yet on server
+            const merged = [
+              ...result.data,
+              ...pendingLocals.filter(p => !serverIds.has(p.id))
+            ];
+            
+            saveToCache(this.table, merged);
+          }
         }
 
         // Trigger sync of pending queue changes after any successful operation
