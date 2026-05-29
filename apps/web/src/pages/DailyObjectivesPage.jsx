@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import supabase from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import EditSlotModal from '@/components/EditSlotModal.jsx';
 import CategoriesModal from '@/components/CategoriesModal.jsx';
 import DetailPanel from '@/components/DetailPanel.jsx';
 import { filterTasksByDateExcludingCompleted, filterTasksByWeekExcludingCompleted } from '@/lib/filterTasksByDate.js';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync.js';
 
 const DailyObjectivesPage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -31,37 +32,14 @@ const DailyObjectivesPage = () => {
   // Task detail
   const [taskToEdit, setTaskToEdit] = useState(null);
   
+  // Listen for realtime changes from other devices
+  useRealtimeSync(['tareas', 'daily_objectives', 'projects'], useCallback((event) => {
+    console.log('[DailyObjectivesPage] Realtime change detected:', event.table, event.eventType);
+    fetchDataForDate(selectedDate);
+  }, [selectedDate]));
+
   useEffect(() => {
     fetchDataForDate(selectedDate);
-
-    const tasksChannel = supabase
-      .channel('daily-objectives-tasks-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tareas' },
-        () => {
-          console.log('Realtime tasks update in DailyObjectivesPage');
-          fetchDataForDate(selectedDate);
-        }
-      )
-      .subscribe();
-
-    const objectivesChannel = supabase
-      .channel('daily-objectives-db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'daily_objectives' },
-        () => {
-          console.log('Realtime daily_objectives update in DailyObjectivesPage');
-          fetchDataForDate(selectedDate);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(tasksChannel);
-      supabase.removeChannel(objectivesChannel);
-    };
   }, [selectedDate]);
 
   const fetchDataForDate = async (date) => {

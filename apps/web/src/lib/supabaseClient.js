@@ -563,17 +563,150 @@ export const supabase = new Proxy(realSupabase, {
   }
 });
 
+// Realtime subscription for cross-device sync
+let realtimeChannel = null;
+const realtimeSyncCallbacks = [];
+
+export function onRealtimeSync(callback) {
+  realtimeSyncCallbacks.push(callback);
+  return () => {
+    const idx = realtimeSyncCallbacks.indexOf(callback);
+    if (idx >= 0) realtimeSyncCallbacks.splice(idx, 1);
+  };
+}
+
+function notifyRealtimeSync(table, eventType, newRecord, oldRecord) {
+  realtimeSyncCallbacks.forEach(cb => {
+    try {
+      cb({ table, eventType, new: newRecord, old: oldRecord });
+    } catch (err) {
+      console.error('Error in realtime sync callback:', err);
+    }
+  });
+}
+
+export function startRealtimeSubscription() {
+  if (realtimeChannel) return; // Already subscribed
+
+  try {
+    realtimeChannel = realSupabase
+      .channel('db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tareas' },
+        (payload) => {
+          console.log('[Realtime] Change in tareas:', payload.eventType, payload);
+          // Update local cache
+          const cached = loadFromCache('tareas');
+          if (payload.eventType === 'INSERT') {
+            const exists = cached.find(r => r.id === payload.new.id);
+            if (!exists) {
+              cached.push(payload.new);
+              saveToCache('tareas', cached);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const idx = cached.findIndex(r => r.id === payload.new.id);
+            if (idx >= 0) {
+              cached[idx] = payload.new;
+              saveToCache('tareas', cached);
+            } else {
+              cached.push(payload.new);
+              saveToCache('tareas', cached);
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const filtered = cached.filter(r => r.id !== payload.old?.id);
+            saveToCache('tareas', filtered);
+          }
+          notifyRealtimeSync('tareas', payload.eventType, payload.new, payload.old);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'projects' },
+        (payload) => {
+          console.log('[Realtime] Change in projects:', payload.eventType, payload);
+          const cached = loadFromCache('projects');
+          if (payload.eventType === 'INSERT') {
+            const exists = cached.find(r => r.id === payload.new.id);
+            if (!exists) {
+              cached.push(payload.new);
+              saveToCache('projects', cached);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const idx = cached.findIndex(r => r.id === payload.new.id);
+            if (idx >= 0) {
+              cached[idx] = payload.new;
+              saveToCache('projects', cached);
+            } else {
+              cached.push(payload.new);
+              saveToCache('projects', cached);
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const filtered = cached.filter(r => r.id !== payload.old?.id);
+            saveToCache('projects', filtered);
+          }
+          notifyRealtimeSync('projects', payload.eventType, payload.new, payload.old);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'daily_objectives' },
+        (payload) => {
+          console.log('[Realtime] Change in daily_objectives:', payload.eventType, payload);
+          const cached = loadFromCache('daily_objectives');
+          if (payload.eventType === 'INSERT') {
+            const exists = cached.find(r => r.id === payload.new.id);
+            if (!exists) {
+              cached.push(payload.new);
+              saveToCache('daily_objectives', cached);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const idx = cached.findIndex(r => r.id === payload.new.id);
+            if (idx >= 0) {
+              cached[idx] = payload.new;
+              saveToCache('daily_objectives', cached);
+            } else {
+              cached.push(payload.new);
+              saveToCache('daily_objectives', cached);
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const filtered = cached.filter(r => r.id !== payload.old?.id);
+            saveToCache('daily_objectives', filtered);
+          }
+          notifyRealtimeSync('daily_objectives', payload.eventType, payload.new, payload.old);
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Subscription status:', status);
+      });
+
+    console.log('[Realtime] Subscription started for tareas, projects, daily_objectives');
+  } catch (err) {
+    console.error('[Realtime] Failed to start subscription:', err);
+  }
+}
+
+export function stopRealtimeSubscription() {
+  if (realtimeChannel) {
+    realSupabase.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+    console.log('[Realtime] Subscription stopped');
+  }
+}
+
 // Setup online sync listeners
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     console.log('App detected online connection. Triggering synchronization...');
     triggerSync();
+    startRealtimeSubscription();
   });
   
   // Attempt sync on application startup if already online
   setTimeout(() => {
     if (navigator.onLine) {
       triggerSync();
+      startRealtimeSubscription();
     }
   }, 1000);
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import supabase from '@/lib/supabaseClient';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,7 @@ import { useViewPreference } from '@/hooks/useViewPreference.js';
 import { useRecurrence } from '@/hooks/useRecurrence.js';
 import { Calendar, RefreshCw } from 'lucide-react';
 import { filterGoalsExcludingCompleted } from '@/lib/filterTasksByDate.js';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync.js';
 
 const MetasPage = () => {
   const [metas, setMetas] = useState([]);
@@ -22,6 +23,12 @@ const MetasPage = () => {
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
 
   const { handleRecurringTaskCompletion, calculateNextDate } = useRecurrence();
+
+  // Listen for realtime changes from other devices
+  useRealtimeSync(['tareas'], useCallback((event) => {
+    console.log('[MetasPage] Realtime change detected:', event.table, event.eventType);
+    fetchMetas();
+  }, []));
 
   useEffect(() => {
     fetchMetas();

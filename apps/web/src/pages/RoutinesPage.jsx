@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import supabase from '@/lib/supabaseClient';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,6 +13,7 @@ import DetailPanel from '@/components/DetailPanel.jsx';
 import AlarmIndicator from '@/components/AlarmIndicator.jsx';
 import { useViewPreference } from '@/hooks/useViewPreference.js';
 import { useRecurrence } from '@/hooks/useRecurrence.js';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync.js';
 import { filterRoutinesExcludingCompleted } from '@/lib/filterTasksByDate.js';
 
 const RoutinesPage = () => {
@@ -29,6 +30,12 @@ const RoutinesPage = () => {
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
 
   const { handleRecurringTaskCompletion, calculateNextDate } = useRecurrence();
+
+  // Listen for realtime changes from other devices
+  useRealtimeSync(['tareas'], useCallback((event) => {
+    console.log('[RoutinesPage] Realtime change detected:', event.table, event.eventType);
+    fetchTasks();
+  }, []));
 
   useEffect(() => {
     fetchTasks();

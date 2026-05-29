@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import supabase from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { useTimeSlots } from '@/hooks/useTimeSlots.js';
 import { GridLayout } from '@/components/GridLayout.jsx';
 import { GridTaskCard } from '@/components/GridTaskCard.jsx';
 import { filterTasksByDate, groupTasksByStatus } from '@/lib/filterTasksByDate.js';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync.js';
 
 const AllTasksPage = () => {
   const [tasks, setTasks] = useState([]);
@@ -55,25 +56,14 @@ const AllTasksPage = () => {
   const frequencies = ['Todas', 'Diaria', 'Semanal', 'Mensual', 'Puntual', 'Meta'];
   const priorities = ['Todas', 'Alta', 'Media', 'Baja'];
 
+  // Listen for realtime changes from other devices
+  useRealtimeSync(['tareas', 'projects'], useCallback((event) => {
+    console.log('[AllTasksPage] Realtime change detected:', event.table, event.eventType);
+    fetchData();
+  }, []));
+
   useEffect(() => {
     fetchData();
-
-    // Subscribe to real-time changes in tareas
-    const channel = supabase
-      .channel('all-tasks-db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tareas' },
-        (payload) => {
-          console.log('Realtime change received in AllTasksPage:', payload);
-          fetchData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import supabase from '@/lib/supabaseClient';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,6 +24,7 @@ import TimeSlotSelector from '@/components/TimeSlotSelector.jsx';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import AvailableTasksSidebar from '@/components/AvailableTasksSidebar.jsx';
 import { filterTasksByDateExcludingCompleted } from '@/lib/filterTasksByDate.js';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync.js';
 
 const TodayPage = () => {
   const [tasks, setTasks] = useState([]);
@@ -57,6 +58,12 @@ const TodayPage = () => {
   const { updateProjectProgress } = useProjectProgress();
   const { handleRecurringTaskCompletion, calculateNextDate } = useRecurrence();
   const { SLOTS, getTasksBySlot } = useTimeSlots();
+
+  // Listen for realtime changes from other devices
+  useRealtimeSync(['tareas', 'projects', 'daily_objectives'], useCallback((event) => {
+    console.log('[TodayPage] Realtime change detected:', event.table, event.eventType);
+    fetchData();
+  }, [activeFilter]));
 
   useEffect(() => {
     fetchData();

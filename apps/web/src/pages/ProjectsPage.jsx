@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import supabase from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import AvailableTasksSidebar from '@/components/AvailableTasksSidebar.jsx';
 import { useDragDrop } from '@/hooks/useDragDrop.js';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync.js';
 
 const ProjectsPage = () => {
   const [projects, setProjects] = useState([]);
@@ -81,37 +82,14 @@ const ProjectsPage = () => {
 
   const { onDragOver, onDragLeave, onDrop, getDropZoneClass } = useDragDrop();
 
+  // Listen for realtime changes from other devices
+  useRealtimeSync(['tareas', 'projects'], useCallback((event) => {
+    console.log('[ProjectsPage] Realtime change detected:', event.table, event.eventType);
+    fetchData();
+  }, []));
+
   useEffect(() => {
     fetchData();
-
-    const tasksChannel = supabase
-      .channel('projects-tasks-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tareas' },
-        () => {
-          console.log('Realtime tasks update in ProjectsPage');
-          fetchData();
-        }
-      )
-      .subscribe();
-
-    const projectsChannel = supabase
-      .channel('projects-db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'projects' },
-        () => {
-          console.log('Realtime projects update in ProjectsPage');
-          fetchData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(tasksChannel);
-      supabase.removeChannel(projectsChannel);
-    };
   }, []);
 
   const fetchData = async () => {

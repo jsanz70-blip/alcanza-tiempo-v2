@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import supabase from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import DetailPanel from '@/components/DetailPanel.jsx';
 import AlarmIndicator from '@/components/AlarmIndicator.jsx';
 import { Calendar, RefreshCw } from 'lucide-react';
 import { filterTasksByWeekExcludingCompleted, groupTasksByWeekDay } from '@/lib/filterTasksByDate.js';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync.js';
 
 const WeekPage = () => {
   const [tasks, setTasks] = useState([]);
@@ -30,25 +31,14 @@ const WeekPage = () => {
   const { startDrag, endDrag, onDragOver, onDragLeave, onDrop, getDropZoneClass } = useDragDrop();
   const { handleRecurringTaskCompletion, calculateNextDate } = useRecurrence();
 
+  // Listen for realtime changes from other devices
+  useRealtimeSync(['tareas'], useCallback((event) => {
+    console.log('[WeekPage] Realtime change detected:', event.table, event.eventType);
+    fetchTasks();
+  }, []));
+
   useEffect(() => {
     fetchTasks();
-
-    // Subscribe to real-time changes in tareas
-    const channel = supabase
-      .channel('week-tasks-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tareas' },
-        (payload) => {
-          console.log('Realtime change received in WeekPage:', payload);
-          fetchTasks();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   const groupedTasks = useMemo(() => groupTasksByWeekDay(tasks), [tasks]);
