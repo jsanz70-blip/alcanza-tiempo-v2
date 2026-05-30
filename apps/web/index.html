@@ -4,15 +4,20 @@
 		<meta charset="UTF-8" />
 		<link rel="icon" href="/favicon.ico" />
 		<link rel="icon" type="image/png" href="/favicon.png" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="apple-touch-icon" href="/icon-192.png" />
 		<link rel="manifest" href="/manifest.json" />
-		<meta name="theme-color" content="#0284c7" />
+		<meta name="theme-color" content="#4A90E2" />
 		<meta name="generator" content="Hostinger Horizons" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Iciz Market - Tareas</title>
+		<title>Alcanza - Gestión de Tiempo</title>
 		<script>
+			// Service Worker DESACTIVADO intencionalmente
+			// Causaba problemas de sincronización al cachear versiones antiguas.
+			// El offline se maneja via localStorage (supabaseClient.js)
 			if ('serviceWorker' in navigator) {
-				window.addEventListener('load', () => {
-					navigator.serviceWorker.register('/sw.js');
+				navigator.serviceWorker.getRegistrations().then(regs => {
+					regs.forEach(r => r.unregister());
 				});
 			}
 		</script>
