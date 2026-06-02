@@ -144,10 +144,19 @@ const CheckListPage = () => {
               setChecklists(localData);
               // Migrar a Supabase en background
               migrateToSupabase(localData);
+            } else {
+              setChecklists(SAMPLE_LISTS);
             }
           } catch (e) {
             console.error('Error parsing local checklists', e);
+            setChecklists(SAMPLE_LISTS);
           }
+        } else {
+          // Sin datos en ningun lado - mostrar ejemplos
+          setChecklists(SAMPLE_LISTS);
+          localStorage.setItem('horizon_checklists', JSON.stringify(SAMPLE_LISTS));
+          // Migrar ejemplos a Supabase
+          migrateToSupabase(SAMPLE_LISTS);
         }
       }
     } catch (error) {
