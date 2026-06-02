@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { 
   ClipboardList, Plus, Trash2, Edit2, Check, X, 
-  Sparkles, CheckCircle2, ListTodo, MoreVertical, 
-  FolderHeart, Star
+  Sparkles, CheckCircle2, ListTodo
 } from 'lucide-react';
 import { toast } from 'sonner';
+import supabase from '@/lib/supabaseClient';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync.js';
 
 const COLOR_THEMES = {
   indigo: {
@@ -94,6 +95,7 @@ const SAMPLE_LISTS = [
 
 const CheckListPage = () => {
   const [checklists, setChecklists] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   // States for Checklist creation inline
   const [isCreating, setIsCreating] = useState(false);
@@ -105,31 +107,98 @@ const CheckListPage = () => {
   const [editingTitle, setEditingTitle] = useState('');
 
   // States for new items inside cards
-  const [newItemTexts, setNewItemTexts] = useState({}); // { listId: string }
+  const [newItemTexts, setNewItemTexts] = useState({});
 
   const createInputRef = useRef(null);
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('horizon_checklists');
-    if (stored) {
-      try {
-        setChecklists(JSON.parse(stored));
-      } catch (e) {
-        console.error('Error parsing stored checklists', e);
+  // Cargar datos de Supabase
+  const fetchChecklists = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('checklists')
+        .select('*')
+        .order('created_at');
+      
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Transformar datos de Supabase al formato local
+        const transformed = data.map(row => ({
+          id: row.id,
+          title: row.title,
+          color: row.color || 'indigo',
+          items: Array.isArray(row.items) ? row.items : [],
+          createdAt: row.created_at
+        }));
+        setChecklists(transformed);
+        
+        // También guardar en localStorage para compatibilidad
+        localStorage.setItem('horizon_checklists', JSON.stringify(transformed));
+      } else {
+        // No hay datos en Supabase - intentar migrar desde localStorage
+        const stored = localStorage.getItem('horizon_checklists');
+        if (stored) {
+          try {
+            const localData = JSON.parse(stored);
+            if (localData.length > 0) {
+              setChecklists(localData);
+              // Migrar a Supabase en background
+              migrateToSupabase(localData);
+            }
+          } catch (e) {
+            console.error('Error parsing local checklists', e);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching checklists:', error);
+      // Fallback a localStorage
+      const stored = localStorage.getItem('horizon_checklists');
+      if (stored) {
+        try {
+          setChecklists(JSON.parse(stored));
+        } catch (e) {
+          setChecklists(SAMPLE_LISTS);
+        }
+      } else {
         setChecklists(SAMPLE_LISTS);
       }
-    } else {
-      setChecklists(SAMPLE_LISTS);
-      localStorage.setItem('horizon_checklists', JSON.stringify(SAMPLE_LISTS));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  // Save checklists helper
-  const saveChecklists = (updated) => {
-    setChecklists(updated);
-    localStorage.setItem('horizon_checklists', JSON.stringify(updated));
+  // Migrar datos locales a Supabase
+  const migrateToSupabase = async (localData) => {
+    for (const list of localData) {
+      try {
+        const { error } = await supabase
+          .from('checklists')
+          .insert({
+            title: list.title,
+            color: list.color || 'indigo',
+            items: list.items || []
+          });
+        if (error) console.error('Error migrating checklist:', error);
+      } catch (e) {
+        console.error('Error migrating checklist:', e);
+      }
+    }
+    console.log(`[CheckList] Migrados ${localData.length} checklists a Supabase`);
   };
+
+  // Polling cada 5s para sincronización entre dispositivos
+  useEffect(() => {
+    fetchChecklists();
+    const interval = setInterval(fetchChecklists, 5000);
+    return () => clearInterval(interval);
+  }, [fetchChecklists]);
+
+  // Realtime sync - cuando otro dispositivo hace un cambio
+  useRealtimeSync(['checklists'], useCallback((event) => {
+    console.log('[CheckList] Realtime change detected:', event.eventType);
+    fetchChecklists();
+  }, [fetchChecklists]));
 
   // Focus helper for creation card
   useEffect(() => {
@@ -139,31 +208,81 @@ const CheckListPage = () => {
   }, [isCreating]);
 
   // Create new checklist card
-  const handleCreateChecklist = (e) => {
+  const handleCreateChecklist = async (e) => {
     e.preventDefault();
     if (!newTitle.trim()) {
       toast.error('El título no puede estar vacío');
       return;
     }
+    
+    // Optimistic UI update
+    const tempId = `checklist-${Date.now()}`;
     const newList = {
-      id: `checklist-${Date.now()}`,
+      id: tempId,
       title: newTitle.trim(),
       color: selectedColor,
       items: [],
       createdAt: new Date().toISOString()
     };
-    saveChecklists([newList, ...checklists]);
+    
+    // Actualizar UI inmediatamente
+    const updatedLists = [newList, ...checklists];
+    setChecklists(updatedLists);
+    localStorage.setItem('horizon_checklists', JSON.stringify(updatedLists));
+    
     setNewTitle('');
     setIsCreating(false);
-    toast.success('¡Nueva lista creada!');
+    
+    // Guardar en Supabase
+    try {
+      const { data, error } = await supabase
+        .from('checklists')
+        .insert({
+          title: newList.title,
+          color: newList.color,
+          items: []
+        })
+        .select();
+      
+      if (error) throw error;
+      
+      if (data && data[0]) {
+        // Reemplazar tempId con el ID real de Supabase
+        const finalLists = updatedLists.map(list => 
+          list.id === tempId 
+            ? { ...list, id: data[0].id, createdAt: data[0].created_at }
+            : list
+        );
+        setChecklists(finalLists);
+        localStorage.setItem('horizon_checklists', JSON.stringify(finalLists));
+      }
+      
+      toast.success('¡Nueva lista creada!');
+    } catch (error) {
+      console.error('Error creating checklist:', error);
+      toast.error('Error al crear lista en la nube');
+    }
   };
 
   // Delete checklist card
-  const handleDeleteChecklist = (id, title) => {
-    if (window.confirm(`¿Estás seguro de eliminar la lista "${title}"?`)) {
-      const updated = checklists.filter(list => list.id !== id);
-      saveChecklists(updated);
-      toast.success('Lista eliminada');
+  const handleDeleteChecklist = async (id, title) => {
+    if (!window.confirm(`¿Estás seguro de eliminar la lista "${title}"?`)) return;
+    
+    // Optimistic UI update
+    const updated = checklists.filter(list => list.id !== id);
+    setChecklists(updated);
+    localStorage.setItem('horizon_checklists', JSON.stringify(updated));
+    toast.success('Lista eliminada');
+    
+    // Eliminar de Supabase
+    try {
+      const { error } = await supabase
+        .from('checklists')
+        .delete()
+        .eq('id', id);
+      if (error) console.error('Error deleting checklist:', error);
+    } catch (e) {
+      console.error('Error deleting checklist:', e);
     }
   };
 
@@ -173,24 +292,39 @@ const CheckListPage = () => {
     setEditingTitle(currentTitle);
   };
 
-  const handleSaveRename = (id) => {
+  const handleSaveRename = async (id) => {
     if (!editingTitle.trim()) {
       toast.error('El título no puede estar vacío');
       return;
     }
+    
+    // Optimistic UI update
     const updated = checklists.map(list => {
       if (list.id === id) {
         return { ...list, title: editingTitle.trim() };
       }
       return list;
     });
-    saveChecklists(updated);
+    setChecklists(updated);
+    localStorage.setItem('horizon_checklists', JSON.stringify(updated));
     setEditingListId(null);
-    toast.success('Título actualizado');
+    
+    // Guardar en Supabase
+    try {
+      const { error } = await supabase
+        .from('checklists')
+        .update({ title: editingTitle.trim() })
+        .eq('id', id);
+      if (error) throw error;
+      toast.success('Título actualizado');
+    } catch (error) {
+      console.error('Error renaming checklist:', error);
+    }
   };
 
   // Toggle item complete status
-  const handleToggleItem = (listId, itemId) => {
+  const handleToggleItem = async (listId, itemId) => {
+    // Optimistic UI update
     const updated = checklists.map(list => {
       if (list.id === listId) {
         const updatedItems = list.items.map(item => {
@@ -203,11 +337,27 @@ const CheckListPage = () => {
       }
       return list;
     });
-    saveChecklists(updated);
+    setChecklists(updated);
+    localStorage.setItem('horizon_checklists', JSON.stringify(updated));
+    
+    // Guardar en Supabase
+    try {
+      const list = updated.find(l => l.id === listId);
+      if (list) {
+        const { error } = await supabase
+          .from('checklists')
+          .update({ items: list.items })
+          .eq('id', listId);
+        if (error) console.error('Error toggling item:', error);
+      }
+    } catch (e) {
+      console.error('Error toggling item:', e);
+    }
   };
 
   // Delete item from checklist
-  const handleDeleteItem = (listId, itemId) => {
+  const handleDeleteItem = async (listId, itemId) => {
+    // Optimistic UI update
     const updated = checklists.map(list => {
       if (list.id === listId) {
         const updatedItems = list.items.filter(item => item.id !== itemId);
@@ -215,11 +365,26 @@ const CheckListPage = () => {
       }
       return list;
     });
-    saveChecklists(updated);
+    setChecklists(updated);
+    localStorage.setItem('horizon_checklists', JSON.stringify(updated));
+    
+    // Guardar en Supabase
+    try {
+      const list = updated.find(l => l.id === listId);
+      if (list) {
+        const { error } = await supabase
+          .from('checklists')
+          .update({ items: list.items })
+          .eq('id', listId);
+        if (error) console.error('Error deleting item:', error);
+      }
+    } catch (e) {
+      console.error('Error deleting item:', e);
+    }
   };
 
   // Add item inline inside card
-  const handleAddItem = (e, listId) => {
+  const handleAddItem = async (e, listId) => {
     e.preventDefault();
     const itemText = newItemTexts[listId] || '';
     if (!itemText.trim()) return;
@@ -230,6 +395,7 @@ const CheckListPage = () => {
       completed: false
     };
 
+    // Optimistic UI update
     const updated = checklists.map(list => {
       if (list.id === listId) {
         return { ...list, items: [...list.items, newItem] };
@@ -237,14 +403,38 @@ const CheckListPage = () => {
       return list;
     });
 
-    saveChecklists(updated);
-    setNewItemTexts({
-      ...newItemTexts,
-      [listId]: ''
-    });
+    setChecklists(updated);
+    localStorage.setItem('horizon_checklists', JSON.stringify(updated));
+    setNewItemTexts({ ...newItemTexts, [listId]: '' });
+
+    // Guardar en Supabase
+    try {
+      const list = updated.find(l => l.id === listId);
+      if (list) {
+        const { error } = await supabase
+          .from('checklists')
+          .update({ items: list.items })
+          .eq('id', listId);
+        if (error) console.error('Error adding item:', error);
+      }
+    } catch (e) {
+      console.error('Error adding item:', e);
+    }
   };
 
-  // Total stats for the top header widgets
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background pb-24 lg:pb-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Cargando listas...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Stats
   const stats = checklists.reduce((acc, curr) => {
     const totalItems = curr.items.length;
     const completedItems = curr.items.filter(i => i.completed).length;

@@ -732,6 +732,34 @@ export function startRealtimeSubscription() {
             notifyRealtimeSync('daily_objectives', payload.eventType, payload.new, payload.old);
           }
         )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'checklists' },
+          (payload) => {
+            console.log('[Realtime] Change in checklists:', payload.eventType, payload);
+            const cached = loadFromCache('checklists');
+            if (payload.eventType === 'INSERT') {
+              const exists = cached.find(r => r.id === payload.new.id);
+              if (!exists) {
+                cached.push(payload.new);
+                saveToCache('checklists', cached);
+              }
+            } else if (payload.eventType === 'UPDATE') {
+              const idx = cached.findIndex(r => r.id === payload.new.id);
+              if (idx >= 0) {
+                cached[idx] = payload.new;
+                saveToCache('checklists', cached);
+              } else {
+                cached.push(payload.new);
+                saveToCache('checklists', cached);
+              }
+            } else if (payload.eventType === 'DELETE') {
+              const filtered = cached.filter(r => r.id !== payload.old?.id);
+              saveToCache('checklists', filtered);
+            }
+            notifyRealtimeSync('checklists', payload.eventType, payload.new, payload.old);
+          }
+        )
         .subscribe((status) => {
           console.log('[Realtime] Subscription status:', status);
           if (status === 'CHANNEL_ERROR' && retryCount < MAX_RETRIES) {
@@ -741,7 +769,7 @@ export function startRealtimeSubscription() {
           }
         });
 
-      console.log('[Realtime] Subscription started for tareas, projects, daily_objectives');
+      console.log('[Realtime] Subscription started for tareas, projects, daily_objectives, checklists');
     } catch (err) {
       console.error('[Realtime] Error en suscripción:', err);
     }
