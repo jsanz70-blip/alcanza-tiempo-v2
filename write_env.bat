@@ -1,0 +1,8 @@
+@echo off
+setlocal enabledelayedexpansion
+(
+echo VITE_SUPABASE_URL=https://zaqgqwmikwoyntwdhskh.supabase.co
+echo.
+echo VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphcWdxd21pa3dveW50d2Roc2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNjYwOTEsImV4cCI6MjA5NTg0MjA5MX0.mRmx7v84_fyg2BqgaNHKpDf4D3UxHfNQRejHaqUXXh
+) > "C:\Users\jsanz\Desktop\alcanza-limpiar\.env"
+echo Done.
