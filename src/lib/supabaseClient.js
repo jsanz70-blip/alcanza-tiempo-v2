@@ -10,6 +10,40 @@ export const realSupabase = createClient(supabaseUrl, supabaseAnonKey)
 // Global list of active realtime callbacks
 const realtimeCallbacks = [];
 
+// Cache version - increment to force full refresh of localStorage on all devices
+const CACHE_VERSION = 'v2';
+const CACHE_VERSION_KEY = 'offline_cache_version';
+
+function isCacheVersionValid() {
+  try {
+    return localStorage.getItem(CACHE_VERSION_KEY) === CACHE_VERSION;
+  } catch (e) {
+    return false;
+  }
+}
+
+function clearAllOfflineCache() {
+  try {
+    const keys = Object.keys(localStorage);
+    keys.forEach(k => {
+      if (k.startsWith('offline_cache_') || k === CACHE_VERSION_KEY || k === 'offline_mutations_queue') {
+        localStorage.removeItem(k);
+      }
+    });
+    console.log('[Cache] Caché local limpiada - versión desactualizada');
+  } catch (e) {
+    console.error('[Cache] Error limpiando caché:', e);
+  }
+}
+
+function setCacheVersion() {
+  try {
+    localStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION);
+  } catch (e) {
+    console.error('[Cache] Error guardando versión:', e);
+  }
+}
+
 // Helper functions for offline caching and synchronization
 function loadFromCache(table) {
   try {
@@ -82,7 +116,7 @@ function triggerRealtimeCallbacks(table, payload) {
 let isSyncing = false;
 
 export async function triggerSync() {
-  if (isSyncing || !navigator.onLine) return;
+  if (isSyncing) return;
   
   const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
   if (queue.length === 0) return;
@@ -306,56 +340,54 @@ class OfflineQueryChain {
   }
 
   async execute() {
-    if (navigator.onLine) {
-      try {
-        const result = await this.realQueryBuilder;
-        if (result && result.error) {
-          if (isNetworkError(result.error)) {
-            return this.executeOffline();
-          }
-          return result;
-        }
-
-        // Merge select results with local cache instead of overwriting
-        if (this.operation === 'select' && result && result.data) {
-          const cached = loadFromCache(this.table);
-          const serverIds = new Set(result.data.map(r => r.id));
-          
-          // If cache was cleared but we have server data, restore it all
-          if (cached.length === 0 && result.data.length > 0) {
-            console.log(`[Cache] Restaurando ${result.data.length} registros de la tabla ${this.table} desde Supabase`);
-            saveToCache(this.table, result.data);
-          } else {
-            // Keep records that exist in cache but not in server (pending inserts)
-            const pendingLocals = cached.filter(r => typeof r.id === 'string' && r.id.startsWith('temp-'));
-            
-            // Merge: server data + pending local items not yet on server
-            const merged = [
-              ...result.data,
-              ...pendingLocals.filter(p => !serverIds.has(p.id))
-            ];
-            
-            saveToCache(this.table, merged);
-          }
-        }
-
-        // Trigger sync of pending queue changes after any successful operation
-        if (this.operation !== 'select') {
-          triggerSync();
-        } else {
-          // Also check for pending sync after select (in case we missed something)
-          triggerSync();
-        }
-
-        return result;
-      } catch (err) {
-        if (isNetworkError(err)) {
+    // Siempre intentar consultar Supabase primero, independientemente de navigator.onLine
+    // (navigator.onLine es poco fiable en PWAs instalados en móviles)
+    try {
+      const result = await this.realQueryBuilder;
+      if (result && result.error) {
+        if (isNetworkError(result.error)) {
           return this.executeOffline();
         }
-        throw err;
+        return result;
       }
-    } else {
-      return this.executeOffline();
+
+      // Merge select results with local cache instead of overwriting
+      if (this.operation === 'select' && result && result.data) {
+        const cached = loadFromCache(this.table);
+        const serverIds = new Set(result.data.map(r => r.id));
+        
+        // If cache was cleared but we have server data, restore it all
+        if (cached.length === 0 && result.data.length > 0) {
+          console.log(`[Cache] Restaurando ${result.data.length} registros de la tabla ${this.table} desde Supabase`);
+          saveToCache(this.table, result.data);
+        } else {
+          // Keep records that exist in cache but not in server (pending inserts)
+          const pendingLocals = cached.filter(r => typeof r.id === 'string' && r.id.startsWith('temp-'));
+          
+          // Merge: server data + pending local items not yet on server
+          const merged = [
+            ...result.data,
+            ...pendingLocals.filter(p => !serverIds.has(p.id))
+          ];
+          
+          saveToCache(this.table, merged);
+        }
+      }
+
+      // Trigger sync of pending queue changes after any successful operation
+      if (this.operation !== 'select') {
+        triggerSync();
+      } else {
+        // Also check for pending sync after select (in case we missed something)
+        triggerSync();
+      }
+
+      return result;
+    } catch (err) {
+      if (isNetworkError(err)) {
+        return this.executeOffline();
+      }
+      throw err;
     }
   }
 
@@ -553,19 +585,17 @@ export const supabase = new Proxy(realSupabase, {
     if (prop === 'channel') {
       return (name) => {
         let realChannel = null;
-        if (navigator.onLine) {
-          try {
-            realChannel = target.channel(name);
-          } catch (err) {
-            console.error('Error creating real channel:', err);
-          }
+        try {
+          realChannel = target.channel(name);
+        } catch (err) {
+          console.error('Error creating real channel:', err);
         }
         return new MockChannel(name, realChannel);
       };
     }
     if (prop === 'removeChannel') {
       return (channel) => {
-        if (channel && channel.realChannel && navigator.onLine) {
+        if (channel && channel.realChannel) {
           try {
             target.removeChannel(channel.realChannel);
           } catch (err) {
@@ -734,24 +764,28 @@ export function stopRealtimeSubscription() {
 
 // Setup online sync listeners
 if (typeof window !== 'undefined') {
+  // Invalidar caché local si la versión cambió (forzar datos frescos de Supabase)
+  if (!isCacheVersionValid()) {
+    clearAllOfflineCache();
+    setCacheVersion();
+  }
+
   window.addEventListener('online', () => {
     console.log('App detected online connection. Triggering synchronization...');
     triggerSync();
     startRealtimeSubscription();
   });
   
-  // Attempt sync on application startup if already online
+  // Attempt sync on application startup
   setTimeout(() => {
-    if (navigator.onLine) {
-      triggerSync();
-      startRealtimeSubscription();
-    }
+    triggerSync();
+    startRealtimeSubscription();
   }, 1000);
   
   // Also handle visibility change (when app comes back to foreground)
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && navigator.onLine) {
-      console.log('App became visible and is online. Triggering sync...');
+    if (!document.hidden) {
+      console.log('App became visible. Triggering sync...');
       triggerSync();
       startRealtimeSubscription();
     }
@@ -768,20 +802,16 @@ if (typeof window !== 'undefined') {
     } else if (!wasVisible && isPageVisible) {
       console.log('App came to foreground');
       // When app comes back to foreground, check for sync
-      if (navigator.onLine) {
-        triggerSync();
-        startRealtimeSubscription();
-      }
+      triggerSync();
+      startRealtimeSubscription();
     }
   });
   
   // Also listen for page focus events
   window.addEventListener('focus', () => {
     console.log('App focused');
-    if (navigator.onLine) {
-      triggerSync();
-      startRealtimeSubscription();
-    }
+    triggerSync();
+    startRealtimeSubscription();
   });
 }
 
