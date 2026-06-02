@@ -1,4 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <circle cx="32" cy="32" r="30" fill="#4A90E2"/>
-  <path d="M18 34 L28 44 L46 22" stroke="white" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="humanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8BC34A"/>
+      <stop offset="100%" stop-color="#4CAF50"/>
+    </linearGradient>
+    <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00BCD4"/>
+      <stop offset="100%" stop-color="#2196F3"/>
+    </linearGradient>
+    <linearGradient id="starGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E0E0E0"/>
+      <stop offset="100%" stop-color="#9E9E9E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="200" cy="200" r="195" fill="#ffffff" stroke="#1B3A5C" stroke-width="2"/>
+
+  <!-- Left arc -->
+  <path d="M 80 280 Q 40 200 80 120" stroke="url(#arcGrad)" stroke-width="12" fill="none" stroke-linecap="round"/>
+
+  <!-- Right arc -->
+  <path d="M 320 120 Q 360 200 320 280" stroke="url(#arcGrad)" stroke-width="12" fill="none" stroke-linecap="round"/>
+
+  <!-- Base horizon line -->
+  <path d="M 70 280 Q 200 310 330 280" stroke="url(#arcGrad)" stroke-width="8" fill="none" stroke-linecap="round"/>
+
+  <!-- Human figure (simplified) -->
+  <!-- Body -->
+  <ellipse cx="200" cy="230" rx="18" ry="35" fill="url(#humanGrad)"/>
+
+  <!-- Head -->
+  <circle cx="200" cy="180" r="16" fill="url(#humanGrad)"/>
+
+  <!-- Left arm (extended upward reaching for star) -->
+  <path d="M 200 210 Q 170 160 160 130" stroke="url(#humanGrad)" stroke-width="10" fill="none" stroke-linecap="round"/>
+
+  <!-- Right arm (at side) -->
+  <path d="M 200 210 Q 220 230 230 250" stroke="url(#humanGrad)" stroke-width="8" fill="none" stroke-linecap="round"/>
+
+  <!-- Left leg -->
+  <path d="M 190 260 Q 170 280 160 300" stroke="url(#humanGrad)" stroke-width="10" fill="none" stroke-linecap="round"/>
+
+  <!-- Right leg -->
+  <path d="M 210 260 Q 230 280 240 300" stroke="url(#humanGrad)" stroke-width="10" fill="none" stroke-linecap="round"/>
+
+  <!-- Star -->
+  <polygon points="160,115 167,100 174,115 190,118 178,128 181,143 167,135 153,143 156,128 144,118"
+           fill="url(#starGrad)"/>
+
+  <!-- Text: AVANZA -->
+  <text x="200" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="48" fill="#1B3A5C" letter-spacing="4">AVANZA</text>
+
+  <!-- Tagline -->
+  <text x="200" y="385" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="12" fill="#1B3A5C" letter-spacing="2">AVANZA · CRECE · LOGRA</text>
 </svg>
