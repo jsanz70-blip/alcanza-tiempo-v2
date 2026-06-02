@@ -11,7 +11,8 @@ export const realSupabase = createClient(supabaseUrl, supabaseAnonKey)
 const realtimeCallbacks = [];
 
 // Cache version - increment to force full refresh of localStorage on all devices
-const CACHE_VERSION = 'v2';
+const APP_VERSION = '1.0.2';
+const CACHE_VERSION = 'v3';
 const CACHE_VERSION_KEY = 'offline_cache_version';
 
 function isCacheVersionValid() {
@@ -36,9 +37,22 @@ function clearAllOfflineCache() {
   }
 }
 
+async function clearBrowserCache() {
+  try {
+    if ('caches' in window) {
+      const cacheKeys = await caches.keys();
+      await Promise.all(cacheKeys.map(key => caches.delete(key)));
+      console.log('[Cache] Cache del navegador limpiado');
+    }
+  } catch (e) {
+    console.error('[Cache] Error limpiando cache del navegador:', e);
+  }
+}
+
 function setCacheVersion() {
   try {
     localStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION);
+    localStorage.setItem('app_version', APP_VERSION);
   } catch (e) {
     console.error('[Cache] Error guardando versión:', e);
   }
@@ -351,27 +365,9 @@ class OfflineQueryChain {
         return result;
       }
 
-      // Merge select results with local cache instead of overwriting
+      // Overwrite cache with fresh server data for offline fallback
       if (this.operation === 'select' && result && result.data) {
-        const cached = loadFromCache(this.table);
-        const serverIds = new Set(result.data.map(r => r.id));
-        
-        // If cache was cleared but we have server data, restore it all
-        if (cached.length === 0 && result.data.length > 0) {
-          console.log(`[Cache] Restaurando ${result.data.length} registros de la tabla ${this.table} desde Supabase`);
-          saveToCache(this.table, result.data);
-        } else {
-          // Keep records that exist in cache but not in server (pending inserts)
-          const pendingLocals = cached.filter(r => typeof r.id === 'string' && r.id.startsWith('temp-'));
-          
-          // Merge: server data + pending local items not yet on server
-          const merged = [
-            ...result.data,
-            ...pendingLocals.filter(p => !serverIds.has(p.id))
-          ];
-          
-          saveToCache(this.table, merged);
-        }
+        saveToCache(this.table, result.data);
       }
 
       // Trigger sync of pending queue changes after any successful operation
@@ -764,9 +760,12 @@ export function stopRealtimeSubscription() {
 
 // Setup online sync listeners
 if (typeof window !== 'undefined') {
-  // Invalidar caché local si la versión cambió (forzar datos frescos de Supabase)
-  if (!isCacheVersionValid()) {
+  // Invalidar TODO si la version de la app cambio
+  const prevVersion = localStorage.getItem('app_version');
+  if (prevVersion !== APP_VERSION) {
+    console.log(`[App] Version cambiada: ${prevVersion || 'ninguna'} -> ${APP_VERSION}. Limpiando todo...`);
     clearAllOfflineCache();
+    clearBrowserCache();
     setCacheVersion();
   }
 
