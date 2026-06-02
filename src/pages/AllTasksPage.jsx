@@ -65,8 +65,8 @@ const AllTasksPage = () => {
 
   useEffect(() => {
     fetchData();
-    // Polling de respaldo cada 15s para sincronización entre ventanas
-    const interval = setInterval(fetchData, 15000);
+    // Polling de respaldo cada 5s para sincronización entre ventanas
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
