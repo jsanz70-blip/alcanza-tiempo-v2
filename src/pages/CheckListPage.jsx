@@ -879,136 +879,122 @@ const CheckListPage = () => {
                     </div>
 
                     {/* Scrollable Items Container */}
-                    <div className="flex-1 overflow-y-auto my-4 pr-1 space-y-1.5 scrollbar-thin">
+                    <div className={`flex-1 overflow-y-auto my-4 pr-1 space-y-1.5 scrollbar-thin rounded-lg transition-colors ${dragOverListId === list.id ? 'bg-primary/5 ring-1 ring-primary/30' : ''}`}
+                      onDragOver={(e) => handleListDragOver(e, list.id)}
+                      onDragLeave={(e) => handleListDragLeave(e, list.id)}
+                      onDrop={(e) => handleItemDrop(e, list.id)}
+                    >
                       {list.items.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground/50">
+                        <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground/50 pt-8">
                           <ListTodo className="w-8 h-8 stroke-[1.5] mb-2 opacity-30" />
                           <p className="text-[11px] font-medium max-w-[160px]">
-                            No hay elementos. ¡Añade el primero abajo!
+                            Arrastra elementos aquí
                           </p>
                         </div>
                       ) : (
-                        <div 
-                          className="flex flex-col gap-2"
-                          onDragOver={(e) => handleListDragOver(e, list.id)}
-                          onDragLeave={(e) => handleListDragLeave(e, list.id)}
-                          onDrop={(e) => handleItemDrop(e, list.id)}
-                        >
-                          <div className={`flex-1 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin rounded-lg transition-colors ${dragOverListId === list.id ? 'bg-primary/5 ring-1 ring-primary/30' : ''}`}>
-                            {list.items.length === 0 ? (
-                              <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground/50">
-                                <ListTodo className="w-8 h-8 stroke-[1.5] mb-2 opacity-30" />
-                                <p className="text-[11px] font-medium max-w-[160px]">
-                                  Arrastra elementos aquí
-                                </p>
+                        list.items.map((item) => {
+                          const isEditingThis = editingItem?.listId === list.id && editingItem?.itemId === item.id;
+                          return (
+                            <div
+                              key={item.id}
+                              draggable={!isEditingThis}
+                              onDragStart={(e) => handleItemDragStart(e, list.id, item)}
+                              onDragEnd={handleItemDragEnd}
+                              className="flex items-start justify-between group/item p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
+                            >
+                              {/* Drag Handle */}
+                              <div className="flex items-center gap-0.5 shrink-0 mt-0.5 mr-0.5 cursor-grab active:cursor-grabbing opacity-0 group-hover/item:opacity-30 transition-opacity text-muted-foreground">
+                                <GripVertical className="w-3 h-3" />
                               </div>
-                            ) : (
-                              list.items.map((item) => {
-                                const isEditingThis = editingItem?.listId === list.id && editingItem?.itemId === item.id;
-                                return (
-                                  <div
-                                    key={item.id}
-                                    draggable={!isEditingThis}
-                                    onDragStart={(e) => handleItemDragStart(e, list.id, item)}
-                                    onDragEnd={handleItemDragEnd}
-                                    className="flex items-start justify-between group/item p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
-                                  >
-                                    {/* Drag Handle */}
-                                    <div className="flex items-center gap-0.5 shrink-0 mt-0.5 mr-0.5 cursor-grab active:cursor-grabbing opacity-0 group-hover/item:opacity-30 transition-opacity text-muted-foreground">
-                                      <GripVertical className="w-3 h-3" />
-                                    </div>
 
-                                    {/* Checkbox */}
-                                    <div 
-                                      onClick={() => handleToggleItem(list.id, item.id)}
-                                      className="flex items-start gap-2 flex-1 min-w-0 cursor-pointer select-none"
+                              {/* Checkbox */}
+                              <div 
+                                onClick={() => handleToggleItem(list.id, item.id)}
+                                className="flex items-start gap-2 flex-1 min-w-0 cursor-pointer select-none"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={item.completed}
+                                  readOnly
+                                  className={`mt-0.5 w-4 h-4 rounded-md border bg-transparent shrink-0 focus:ring-0 ${theme.checkbox} transition-all`}
+                                />
+
+                                {isEditingThis ? (
+                                  <div className="flex-1 flex items-center gap-1">
+                                    <input
+                                      type="text"
+                                      value={editingItemText}
+                                      onChange={(e) => setEditingItemText(e.target.value)}
+                                      className="flex-1 bg-muted border border-border focus:border-primary rounded-lg px-2 py-1 text-[13px] outline-none"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleSaveEditItem();
+                                        if (e.key === 'Escape') handleCancelEditItem();
+                                      }}
+                                    />
+                                    <Button 
+                                      size="icon"
+                                      onMouseDown={(e) => { e.preventDefault(); handleSaveEditItem(); }}
+                                      className="h-6 w-6 bg-primary text-primary-foreground hover:bg-primary/95 rounded-lg shrink-0"
                                     >
-                                      <input
-                                        type="checkbox"
-                                        checked={item.completed}
-                                        readOnly
-                                        className={`mt-0.5 w-4 h-4 rounded-md border bg-transparent shrink-0 focus:ring-0 ${theme.checkbox} transition-all`}
-                                      />
-
-                                      {isEditingThis ? (
-                                        <div className="flex-1 flex items-center gap-1">
-                                          <input
-                                            type="text"
-                                            value={editingItemText}
-                                            onChange={(e) => setEditingItemText(e.target.value)}
-                                            className="flex-1 bg-muted border border-border focus:border-primary rounded-lg px-2 py-1 text-[13px] outline-none"
-                                            autoFocus
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter') handleSaveEditItem();
-                                              if (e.key === 'Escape') handleCancelEditItem();
-                                            }}
-                                          />
-                                          <Button 
-                                            size="icon"
-                                            onMouseDown={(e) => { e.preventDefault(); handleSaveEditItem(); }}
-                                            className="h-6 w-6 bg-primary text-primary-foreground hover:bg-primary/95 rounded-lg shrink-0"
-                                          >
-                                            <Check className="w-3 h-3" />
-                                          </Button>
-                                          <Button 
-                                            size="icon"
-                                            variant="outline"
-                                            onMouseDown={(e) => { e.preventDefault(); handleCancelEditItem(); }}
-                                            className="h-6 w-6 rounded-lg shrink-0"
-                                          >
-                                            <X className="w-3 h-3" />
-                                          </Button>
-                                        </div>
-                                      ) : (
-                                        <span
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleStartEditItem(list.id, item.id, item.text);
-                                          }}
-                                          className={`text-[13px] leading-relaxed transition-all whitespace-pre-wrap break-words cursor-text hover:text-primary ${
-                                            item.completed 
-                                              ? 'line-through text-muted-foreground/60 font-medium' 
-                                              : 'text-foreground font-medium'
-                                          }`}
-                                        >
-                                          {item.text}
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    {/* Action buttons */}
-                                    <div className="flex items-center gap-0.5 shrink-0 ml-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                      {/* Convert to Task */}
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleConvertToTask(item);
-                                        }}
-                                        className="p-0.5 text-muted-foreground hover:text-emerald-400 transition-colors"
-                                        title="Convertir en tarea"
-                                      >
-                                        <ArrowRightToLine className="w-3.5 h-3.5" />
-                                      </button>
-                                      {/* Delete */}
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDeleteItem(list.id, item.id);
-                                        }}
-                                        className="p-0.5 text-muted-foreground hover:text-rose-400 transition-colors"
-                                        title="Quitar elemento"
-                                      >
-                                        <X className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
+                                      <Check className="w-3 h-3" />
+                                    </Button>
+                                    <Button 
+                                      size="icon"
+                                      variant="outline"
+                                      onMouseDown={(e) => { e.preventDefault(); handleCancelEditItem(); }}
+                                      className="h-6 w-6 rounded-lg shrink-0"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </Button>
                                   </div>
-                                );
-                              })
-                            )}
-                          </div>
-                        </div>
-                    </div>
+                                ) : (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStartEditItem(list.id, item.id, item.text);
+                                    }}
+                                    className={`text-[13px] leading-relaxed transition-all whitespace-pre-wrap break-words cursor-text hover:text-primary ${
+                                      item.completed 
+                                        ? 'line-through text-muted-foreground/60 font-medium' 
+                                        : 'text-foreground font-medium'
+                                    }`}
+                                  >
+                                    {item.text}
+                                  </span>
+                                )}
+                              </div>
 
+                              {/* Action buttons */}
+                              <div className="flex items-center gap-0.5 shrink-0 ml-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                {/* Convert to Task */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleConvertToTask(item);
+                                  }}
+                                  className="p-0.5 text-muted-foreground hover:text-emerald-400 transition-colors"
+                                  title="Convertir en tarea"
+                                >
+                                  <ArrowRightToLine className="w-3.5 h-3.5" />
+                                </button>
+                                {/* Delete */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteItem(list.id, item.id);
+                                  }}
+                                  className="p-0.5 text-muted-foreground hover:text-rose-400 transition-colors"
+                                  title="Quitar elemento"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                     {/* Add Item Input Form */}
                     <form 
                       onSubmit={(e) => handleAddItem(e, list.id)}
