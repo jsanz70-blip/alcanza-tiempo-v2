@@ -404,6 +404,15 @@ const ProjectsPage = () => {
                                 Sin descripción
                               </p>
                             )}
+                            {/* Notas del proyecto */}
+                            {project.notas ? (
+                              <div className="mb-3 p-2.5 bg-muted/30 border border-border/40 rounded-lg">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">📝 Notas</p>
+                                <p className="text-[12px] text-muted-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-3">
+                                  {project.notas}
+                                </p>
+                              </div>
+                            ) : null}
                           </div>
 
                           {/* Progress Area */}
@@ -557,6 +566,14 @@ const ProjectsPage = () => {
                             </span>
                           </div>
                           {project.descripcion && <p className="text-sm text-muted-foreground mb-4 line-clamp-1">{project.descripcion}</p>}
+                          {project.notas && (
+                            <div className="mb-3 p-2.5 bg-muted/30 border border-border/40 rounded-lg max-w-lg">
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">📝 Notas</p>
+                              <p className="text-[12px] text-muted-foreground/70 leading-relaxed whitespace-pre-wrap line-clamp-2">
+                                {project.notas}
+                              </p>
+                            </div>
+                          )}
                           <div className="flex items-center gap-4 max-w-md">
                             <Progress value={stats.percent} className="h-2 flex-1 bg-muted" indicatorColor={project.color} />
                             <span className="text-xs font-semibold text-muted-foreground w-12 text-right tabular-nums">{stats.percent}%</span>

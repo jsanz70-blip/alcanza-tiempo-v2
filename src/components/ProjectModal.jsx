@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import supabase from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,30 @@ import { Loader2, Trash2 } from 'lucide-react';
 
 const ProjectModal = ({ isOpen, onClose, onSave, project = null, tasksCount = 0 }) => {
   const [formData, setFormData] = useState({
-    nombre: project?.nombre || '',
-    descripcion: project?.descripcion || '',
-    color: project?.color || 'hsl(var(--color-blue-light))',
-    estado: project?.estado || 'Activo'
+    nombre: '',
+    descripcion: '',
+    notas: '',
+    color: 'hsl(var(--color-blue-light))',
+    estado: 'Activo'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sincronizar formData cuando se abre el modal con un proyecto diferente
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        nombre: project?.nombre || '',
+        descripcion: project?.descripcion || '',
+        notas: project?.notas || '',
+        color: project?.color || 'hsl(var(--color-blue-light))',
+        estado: project?.estado || 'Activo'
+      });
+      // Resetear estados de carga
+      setIsSubmitting(false);
+      setIsDeleting(false);
+    }
+  }, [isOpen, project]);
 
   // Soft palette options
   const colorOptions = [
@@ -27,8 +44,9 @@ const ProjectModal = ({ isOpen, onClose, onSave, project = null, tasksCount = 0 
   ];
 
   const handleSubmit = async () => {
-    if (!formData.nombre.trim()) {
-      toast.error('El nombre es requerido');
+    // Solo validar nombre si es un proyecto nuevo
+    if (!project && !formData.nombre.trim()) {
+      toast.error('El nombre es requerido para crear un proyecto');
       return;
     }
 
@@ -115,6 +133,17 @@ const ProjectModal = ({ isOpen, onClose, onSave, project = null, tasksCount = 0 
               placeholder="Breve descripción del objetivo" 
               value={formData.descripcion} 
               onChange={(e) => setFormData({...formData, descripcion: e.target.value})} 
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notas">Notas</Label>
+            <textarea 
+              id="notas" 
+              placeholder="Escribe notas, ideas o comentarios sobre este proyecto..."
+              value={formData.notas}
+              onChange={(e) => setFormData({...formData, notas: e.target.value})}
+              className="flex min-h-[100px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
             />
           </div>
 
