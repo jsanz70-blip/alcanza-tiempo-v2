@@ -294,72 +294,175 @@ const WeekPage = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {filteredTasks.map((task) => (
-                      <div 
-                        key={task.id} 
-                        className="task-card cursor-pointer group"
-                        draggable="true"
-                        onDragStart={(e) => startDrag(e, task.id, { type: 'week' })}
-                        onDragEnd={endDrag}
-                        onClick={() => handleEditClick(task)}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-muted-foreground bg-background px-1.5 py-0.5 rounded-md border border-border">#{task.numero}</span>
-                          </div>
-                          <AlarmIndicator task={task} />
-                        </div>
+                  <div className="space-y-6">
+                    {/* Cuando "Todos" está seleccionado, mostrar tareas agrupadas por día */}
+                    {selectedDay === 'Todos' ? (
+                      (() => {
+                        // Reordenar: días con fecha primero, "Sin fecha específica" al final
+                        const entries = Object.entries(groupedTasks);
+                        const sinFecha = entries.find(([key]) => key === 'Sin fecha específica');
+                        const conFecha = entries.filter(([key]) => key !== 'Sin fecha específica' && key.length > 0);
+                        const ordered = [
+                          ...conFecha.filter(([_, tasks]) => tasks.length > 0),
+                          ...(sinFecha && sinFecha[1].length > 0 ? [sinFecha] : [])
+                        ];
                         
-                        <h3 className={`font-medium text-[14px] mb-3 leading-tight transition-colors ${task.estado === 'Hecho' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                          {task.tarea}
-                        </h3>
-                        
-                        <div className="flex flex-wrap gap-1.5 mb-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoryBadgeClass(task.categoria_codigo)}`}>
-                            {task.categoria_codigo}
-                          </span>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getPriorityBadgeClass(task.prioridad)}`}>
-                            {task.prioridad}
-                          </span>
-                        </div>
+                        return ordered.map(([day, dayTasks]) => (
+                          <div key={day}>
+                            {/* Day Section Header */}
+                            <div className="flex items-center gap-2 mb-3">
+                              <h3 className={`text-[15px] font-heading font-bold ${day === 'Sin fecha específica' ? 'text-muted-foreground/60' : 'text-foreground'}`}>
+                                {day === 'Sin fecha específica' ? '📅 Sin fecha asignada' : day}
+                              </h3>
+                              <div className="flex-1 h-px bg-border/60" />
+                              <span className="text-[11px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-semibold">{dayTasks.length}</span>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              {dayTasks.map((task) => (
+                                <div 
+                                  key={task.id} 
+                                  className="task-card cursor-pointer group"
+                                  draggable="true"
+                                  onDragStart={(e) => startDrag(e, task.id, { type: 'week' })}
+                                  onDragEnd={endDrag}
+                                  onClick={() => handleEditClick(task)}
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-bold text-muted-foreground bg-background px-1.5 py-0.5 rounded-md border border-border">#{task.numero}</span>
+                                    </div>
+                                    <AlarmIndicator task={task} />
+                                  </div>
+                                  
+                                  <h3 className={`font-medium text-[14px] mb-3 leading-tight transition-colors ${task.estado === 'Hecho' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                                    {task.tarea}
+                                  </h3>
+                                  
+                                  <div className="flex flex-wrap gap-1.5 mb-3">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoryBadgeClass(task.categoria_codigo)}`}>
+                                      {task.categoria_codigo}
+                                    </span>
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getPriorityBadgeClass(task.prioridad)}`}>
+                                      {task.prioridad}
+                                    </span>
+                                  </div>
 
-                        {(task.fecha_vencimiento || (task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia')) && (
-                          <div className="flex flex-wrap gap-2 text-[10px] font-medium mb-3">
-                            {task.fecha_vencimiento && (
-                              <span className={`flex items-center gap-1 ${getDueDateColor(task.fecha_vencimiento)}`}>
-                                <Calendar className="w-3 h-3" />
-                                {new Date(task.fecha_vencimiento).toLocaleDateString()}
-                              </span>
-                            )}
-                            {task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia' && (
-                              <span className="flex items-center gap-1 text-muted-foreground">
-                                <RefreshCw className="w-3 h-3" />
-                                {task.tipo_recurrencia}
-                              </span>
-                            )}
+                                  {(task.fecha_vencimiento || (task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia')) && (
+                                    <div className="flex flex-wrap gap-2 text-[10px] font-medium mb-3">
+                                      {task.fecha_vencimiento && (
+                                        <span className={`flex items-center gap-1 ${getDueDateColor(task.fecha_vencimiento)}`}>
+                                          <Calendar className="w-3 h-3" />
+                                          {new Date(task.fecha_vencimiento).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                      {task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia' && (
+                                        <span className="flex items-center gap-1 text-muted-foreground">
+                                          <RefreshCw className="w-3 h-3" />
+                                          {task.tipo_recurrencia}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  <Select 
+                                    value={task.estado} 
+                                    onValueChange={(value) => handleEstadoChange(task.id, value)}
+                                  >
+                                    <SelectTrigger 
+                                      className="bg-background border-border h-[44px] text-[13px]" 
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Pendiente">Pendiente</SelectItem>
+                                      <SelectItem value="En curso">En curso</SelectItem>
+                                      <SelectItem value="Esperando">Esperando</SelectItem>
+                                      <SelectItem value="Hecho">Hecho</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ));
+                      })()
+                    ) : (
+                      /* Cuando se selecciona un día específico, mostrar vista plana (sin agrupar) */
+                      <div className="space-y-3">
+                        {selectedDay === 'Sin fecha específica' && (
+                          <div className="flex items-center gap-2 mb-2 text-muted-foreground/60">
+                            <span className="text-[12px]">📅 Tareas sin fecha asignada</span>
                           </div>
                         )}
-                        
-                        <Select 
-                          value={task.estado} 
-                          onValueChange={(value) => handleEstadoChange(task.id, value)}
-                        >
-                          <SelectTrigger 
-                            className="bg-background border-border h-[44px] text-[13px]" 
-                            onClick={(e) => e.stopPropagation()}
+                        {filteredTasks.map((task) => (
+                          <div 
+                            key={task.id} 
+                            className="task-card cursor-pointer group"
+                            draggable="true"
+                            onDragStart={(e) => startDrag(e, task.id, { type: 'week' })}
+                            onDragEnd={endDrag}
+                            onClick={() => handleEditClick(task)}
                           >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Pendiente">Pendiente</SelectItem>
-                            <SelectItem value="En curso">En curso</SelectItem>
-                            <SelectItem value="Esperando">Esperando</SelectItem>
-                            <SelectItem value="Hecho">Hecho</SelectItem>
-                          </SelectContent>
-                        </Select>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-muted-foreground bg-background px-1.5 py-0.5 rounded-md border border-border">#{task.numero}</span>
+                              </div>
+                              <AlarmIndicator task={task} />
+                            </div>
+                            
+                            <h3 className={`font-medium text-[14px] mb-3 leading-tight transition-colors ${task.estado === 'Hecho' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                              {task.tarea}
+                            </h3>
+                            
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoryBadgeClass(task.categoria_codigo)}`}>
+                                {task.categoria_codigo}
+                              </span>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getPriorityBadgeClass(task.prioridad)}`}>
+                                {task.prioridad}
+                              </span>
+                            </div>
+
+                            {(task.fecha_vencimiento || (task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia')) && (
+                              <div className="flex flex-wrap gap-2 text-[10px] font-medium mb-3">
+                                {task.fecha_vencimiento && (
+                                  <span className={`flex items-center gap-1 ${getDueDateColor(task.fecha_vencimiento)}`}>
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(task.fecha_vencimiento).toLocaleDateString()}
+                                  </span>
+                                )}
+                                {task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia' && (
+                                  <span className="flex items-center gap-1 text-muted-foreground">
+                                    <RefreshCw className="w-3 h-3" />
+                                    {task.tipo_recurrencia}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            
+                            <Select 
+                              value={task.estado} 
+                              onValueChange={(value) => handleEstadoChange(task.id, value)}
+                            >
+                              <SelectTrigger 
+                                className="bg-background border-border h-[44px] text-[13px]" 
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Pendiente">Pendiente</SelectItem>
+                                <SelectItem value="En curso">En curso</SelectItem>
+                                <SelectItem value="Esperando">Esperando</SelectItem>
+                                <SelectItem value="Hecho">Hecho</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 )
               )
