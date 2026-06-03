@@ -620,7 +620,7 @@ const CheckListPage = () => {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className={`flex flex-col justify-between min-h-[300px] max-h-[480px] p-5 rounded-2xl border bg-card shadow-sm transition-all duration-300 relative group/card ${theme.card}`}
+                    className={`flex flex-col justify-between min-h-[300px] max-h-[600px] p-5 rounded-2xl border bg-card shadow-sm transition-all duration-300 relative group/card ${theme.card}`}
                   >
                     {/* Card Header */}
                     <div className="space-y-3">
@@ -734,7 +734,7 @@ const CheckListPage = () => {
                                 readOnly
                                 className={`mt-0.5 w-4 h-4 rounded-md border bg-transparent shrink-0 focus:ring-0 ${theme.checkbox} transition-all`}
                               />
-                              <span className={`text-[13px] leading-tight transition-all truncate ${
+                              <span className={`text-[13px] leading-relaxed transition-all whitespace-pre-wrap break-words ${
                                 item.completed 
                                   ? 'line-through text-muted-foreground/60 font-medium' 
                                   : 'text-foreground font-medium'
