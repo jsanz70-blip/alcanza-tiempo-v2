@@ -52,15 +52,14 @@ const DailyObjectivesPage = () => {
         throw new Error("Formato de fecha inválido. Debe ser YYYY-MM-DD.");
       }
 
-      const startOfDay = new Date(dateStr + 'T00:00:00.000Z');
-      const endOfDay = new Date(dateStr + 'T23:59:59.999Z');
-
+      // Usar solo la fecha como string para evitar problemas de timezone
       const [objRes, tksRes, prjRes] = await Promise.all([
         supabase
           .from('daily_objectives')
           .select('*')
-          .gte('fecha', startOfDay.toISOString())
-          .lte('fecha', endOfDay.toISOString()),
+          .gte('fecha', dateStr + 'T00:00:00.000Z')
+          .lte('fecha', dateStr + 'T23:59:59.999Z')
+          .order('fecha', { ascending: false }),
         supabase
           .from('tareas')
           .select('*, projects(*)')
@@ -76,6 +75,16 @@ const DailyObjectivesPage = () => {
       if (prjRes.error) throw prjRes.error;
 
       let currentRecord = objRes.data[0];
+      
+      // Si hay múltiples registros para el mismo día (duplicados), usar el que tenga más franjas
+      if (objRes.data && objRes.data.length > 1) {
+        const sorted = [...objRes.data].sort((a, b) => {
+          const aFranjas = Array.isArray(a.franjas) ? a.franjas.length : 0;
+          const bFranjas = Array.isArray(b.franjas) ? b.franjas.length : 0;
+          return bFranjas - aFranjas;
+        });
+        currentRecord = sorted[0];
+      }
       const tasksRes = tksRes.data;
       const projectsRes = prjRes.data;
 
