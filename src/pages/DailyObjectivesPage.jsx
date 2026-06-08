@@ -92,27 +92,44 @@ const DailyObjectivesPage = () => {
       if (!currentRecord) {
         let templateFranjas = [];
         try {
-          // Look back in the database for recent daily objectives to use as a template
+          // Look back for recent daily objectives to use as a template
+          // Filter out: future dates, dates outside current year, and empty records
           const { data: recentDays } = await supabase
             .from('daily_objectives')
             .select('*')
             .order('fecha', { ascending: false })
-            .limit(10);
+            .limit(30);
 
           if (recentDays && recentDays.length > 0) {
-            // Find the most recent day that has a non-empty franjas array
-            const dayWithFranjas = recentDays.find(d => {
+            // Parse today's date as YYYY-MM-DD for comparison
+            const todayStr = new Date().toISOString().slice(0, 10);
+            
+            // Find the record with the MOST franjas, skipping future/bad dates
+            let bestDay = null;
+            let bestCount = 0;
+            for (const d of recentDays) {
+              // Skip future dates and clearly wrong dates (year outside 2025-2026)
+              const dStr = typeof d.fecha === 'string' ? d.fecha.slice(0, 10) : '';
+              if (dStr > todayStr || dStr < '2025-01-01') continue;
+              
               let f = [];
               if (d.franjas) {
-                f = typeof d.franjas === 'string' ? JSON.parse(d.franjas) : d.franjas;
+                try {
+                  f = typeof d.franjas === 'string' ? JSON.parse(d.franjas) : d.franjas;
+                } catch(e) { f = []; }
               }
-              return Array.isArray(f) && f.length > 0;
-            });
+              if (!Array.isArray(f)) f = [];
+              const realFranjas = f.filter(s => s && typeof s === 'object' && s.categoria);
+              if (realFranjas.length > bestCount) {
+                bestCount = realFranjas.length;
+                bestDay = d;
+              }
+            }
 
-            if (dayWithFranjas) {
-              const parsed = typeof dayWithFranjas.franjas === 'string'
-                ? JSON.parse(dayWithFranjas.franjas)
-                : dayWithFranjas.franjas;
+            if (bestDay) {
+              const parsed = typeof bestDay.franjas === 'string'
+                ? JSON.parse(bestDay.franjas)
+                : bestDay.franjas;
 
               // Copy slots but reset task lists for the new day
               templateFranjas = parsed.map(slot => ({
