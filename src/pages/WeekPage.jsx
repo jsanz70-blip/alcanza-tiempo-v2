@@ -14,14 +14,15 @@ import { GridLayout } from '@/components/GridLayout.jsx';
 import { GridTaskCard } from '@/components/GridTaskCard.jsx';
 import DetailPanel from '@/components/DetailPanel.jsx';
 import AlarmIndicator from '@/components/AlarmIndicator.jsx';
-import { Calendar, RefreshCw } from 'lucide-react';
+import { Calendar, RefreshCw, Clock } from 'lucide-react';
 import { filterTasksByWeekExcludingCompleted, groupTasksByWeekDay } from '@/lib/filterTasksByDate.js';
+import AvailableTasksSidebar from '@/components/AvailableTasksSidebar.jsx';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync.js';
 
 const WeekPage = () => {
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
-  const [selectedDay, setSelectedDay] = useState('Todos');
+  const [selectedDay, setSelectedDay] = useState('Vencidas');
   const [loading, setLoading] = useState(true);
   
   const [viewMode, setViewMode] = useViewPreference('week', 'list');
@@ -42,15 +43,33 @@ const WeekPage = () => {
   }, []);
 
   const groupedTasks = useMemo(() => groupTasksByWeekDay(tasks), [tasks]);
-  const days = ['Todos', ...Object.keys(groupedTasks)];
+  
+  // Get overdue tasks (past dates, not completed)
+  const overdueTasks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return tasks.filter(t => {
+      if (!t.fecha_vencimiento || t.estado === 'Hecho') return false;
+      const dueDate = new Date(t.fecha_vencimiento);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate < today;
+    });
+  }, [tasks]);
+  
+  // Get tasks without specific date
+  const tasksWithoutDate = useMemo(() => {
+    return tasks.filter(t => !t.fecha_vencimiento && t.estado !== 'Hecho');
+  }, [tasks]);
+  
+  const days = ['Vencidas', ...Object.keys(groupedTasks)];
 
   useEffect(() => {
-    if (selectedDay === 'Todos') {
-      setFilteredTasks(tasks);
+    if (selectedDay === 'Vencidas') {
+      setFilteredTasks(overdueTasks);
     } else {
       setFilteredTasks(groupedTasks[selectedDay] || []);
     }
-  }, [selectedDay, tasks, groupedTasks]);
+  }, [selectedDay, tasks, groupedTasks, overdueTasks]);
 
   const fetchTasks = async () => {
     try {
@@ -122,7 +141,7 @@ const WeekPage = () => {
 
   const onGridDrop = async (data, dropZoneId) => {
     const targetDay = dropZoneId.replace('day-', '');
-    if (!data || !data.taskId || targetDay === 'Todos') return;
+    if (!data || !data.taskId || targetDay === 'Vencidas') return;
 
     const task = tasks.find(t => t.id === data.taskId);
     if (!task) return;
@@ -137,9 +156,10 @@ const WeekPage = () => {
         newDateStr = newDate.toISOString();
       }
     } else {
-      newDateStr = "";
+      newDateStr = null;
     }
 
+    // Optimistic update
     const updatedTask = { ...task, fecha_vencimiento: newDateStr };
     setTasks(tasks.map(t => t.id === task.id ? updatedTask : t));
     toast.success(`Movido a ${targetDay}`);
@@ -155,6 +175,37 @@ const WeekPage = () => {
       console.error('Error moving task:', error);
       toast.error('Error al mover la tarea');
       setTasks(tasks.map(t => t.id === task.id ? task : t));
+    }
+  };
+
+  const handleAssignDateFromSidebar = async (taskId, targetDay) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    let newDateStr = '';
+    if (targetDay !== 'Sin fecha específica') {
+      const datePart = targetDay.split(' ')[1];
+      if (datePart) {
+        const [day, month] = datePart.split('/');
+        const now = new Date();
+        const newDate = new Date(now.getFullYear(), parseInt(month) - 1, parseInt(day));
+        newDateStr = newDate.toISOString();
+      }
+    }
+
+    try {
+      const { error } = await supabase
+        .from('tareas')
+        .update({ fecha_vencimiento: newDateStr })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      toast.success(`Fecha asignada a ${targetDay}`);
+      fetchTasks();
+    } catch (error) {
+      console.error('Error assigning date:', error);
+      toast.error('Error al asignar fecha');
     }
   };
 
@@ -220,9 +271,9 @@ const WeekPage = () => {
                     variant={selectedDay === day ? 'default' : 'outline'}
                     className={`h-[36px] whitespace-nowrap rounded-full px-4 transition-all duration-200 text-[13px] flex-shrink-0 ${selectedDay === day ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-card hover:bg-muted'} ${getDropZoneClass({ id: `day-${day}` })}`}
                     onClick={() => setSelectedDay(day)}
-                    onDragOver={(e) => day !== 'Todos' && onDragOver(e, { id: `day-${day}`, type: 'week' })}
-                    onDragLeave={(e) => day !== 'Todos' && onDragLeave(e, { id: `day-${day}`, type: 'week' })}
-                    onDrop={(e) => day !== 'Todos' && onListDropToDay(e, day)}
+                    onDragOver={(e) => day !== 'Vencidas' && onDragOver(e, { id: `day-${day}`, type: 'week' })}
+                    onDragLeave={(e) => day !== 'Vencidas' && onDragLeave(e, { id: `day-${day}`, type: 'week' })}
+                    onDrop={(e) => day !== 'Vencidas' && onListDropToDay(e, day)}
                   >
                     {day}
                   </Button>
@@ -232,7 +283,11 @@ const WeekPage = () => {
           </div>
         </div>
         
-        <main className="px-3 py-4">
+        <main className="max-w-[1600px] w-full mx-auto px-3 py-4 h-[calc(100vh-80px)] overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full h-full items-start">
+            
+            {/* Main Content */}
+            <div className="lg:col-span-8 xl:col-span-9 h-full overflow-y-auto pr-2">
           <div key={viewMode} className="animate-fade-in view-transition">
             {loading ? (
               <div className="space-y-3">
@@ -288,185 +343,93 @@ const WeekPage = () => {
                 filteredTasks.length === 0 ? (
                   <div className="text-center py-12 bg-card rounded-xl border border-border">
                     <p className="text-[14px] text-muted-foreground font-medium">
-                      {selectedDay === 'Todos' 
-                        ? 'No hay tareas pendientes para esta semana' 
+                      {selectedDay === 'Vencidas' 
+                        ? 'No hay tareas vencidas' 
                         : `No hay tareas pendientes para ${selectedDay}`}
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    {/* Cuando "Todos" está seleccionado, mostrar tareas agrupadas por día */}
-                    {selectedDay === 'Todos' ? (
-                      (() => {
-                        // Reordenar: días con fecha primero, "Sin fecha específica" al final
-                        const entries = Object.entries(groupedTasks);
-                        const sinFecha = entries.find(([key]) => key === 'Sin fecha específica');
-                        const conFecha = entries.filter(([key]) => key !== 'Sin fecha específica' && key.length > 0);
-                        const ordered = [
-                          ...conFecha.filter(([_, tasks]) => tasks.length > 0),
-                          ...(sinFecha && sinFecha[1].length > 0 ? [sinFecha] : [])
-                        ];
-                        
-                        return ordered.map(([day, dayTasks]) => (
-                          <div key={day}>
-                            {/* Day Section Header */}
-                            <div className="flex items-center gap-2 mb-3">
-                              <h3 className={`text-[15px] font-heading font-bold ${day === 'Sin fecha específica' ? 'text-muted-foreground/60' : 'text-foreground'}`}>
-                                {day === 'Sin fecha específica' ? '📅 Sin fecha asignada' : day}
-                              </h3>
-                              <div className="flex-1 h-px bg-border/60" />
-                              <span className="text-[11px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-semibold">{dayTasks.length}</span>
-                            </div>
-                            
-                            <div className="space-y-3">
-                              {dayTasks.map((task) => (
-                                <div 
-                                  key={task.id} 
-                                  className="task-card cursor-pointer group"
-                                  draggable="true"
-                                  onDragStart={(e) => startDrag(e, task.id, { type: 'week' })}
-                                  onDragEnd={endDrag}
-                                  onClick={() => handleEditClick(task)}
-                                >
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[10px] font-bold text-muted-foreground bg-background px-1.5 py-0.5 rounded-md border border-border">#{task.numero}</span>
-                                    </div>
-                                    <AlarmIndicator task={task} />
-                                  </div>
-                                  
-                                  <h3 className={`font-medium text-[14px] mb-3 leading-tight transition-colors ${task.estado === 'Hecho' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                                    {task.tarea}
-                                  </h3>
-                                  
-                                  <div className="flex flex-wrap gap-1.5 mb-3">
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoryBadgeClass(task.categoria_codigo)}`}>
-                                      {task.categoria_codigo}
-                                    </span>
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getPriorityBadgeClass(task.prioridad)}`}>
-                                      {task.prioridad}
-                                    </span>
-                                  </div>
-
-                                  {(task.fecha_vencimiento || (task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia')) && (
-                                    <div className="flex flex-wrap gap-2 text-[10px] font-medium mb-3">
-                                      {task.fecha_vencimiento && (
-                                        <span className={`flex items-center gap-1 ${getDueDateColor(task.fecha_vencimiento)}`}>
-                                          <Calendar className="w-3 h-3" />
-                                          {new Date(task.fecha_vencimiento).toLocaleDateString()}
-                                        </span>
-                                      )}
-                                      {task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia' && (
-                                        <span className="flex items-center gap-1 text-muted-foreground">
-                                          <RefreshCw className="w-3 h-3" />
-                                          {task.tipo_recurrencia}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                  
-                                  <Select 
-                                    value={task.estado} 
-                                    onValueChange={(value) => handleEstadoChange(task.id, value)}
-                                  >
-                                    <SelectTrigger 
-                                      className="bg-background border-border h-[44px] text-[13px]" 
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="Pendiente">Pendiente</SelectItem>
-                                      <SelectItem value="En curso">En curso</SelectItem>
-                                      <SelectItem value="Esperando">Esperando</SelectItem>
-                                      <SelectItem value="Hecho">Hecho</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              ))}
-                            </div>
+                  <div className="space-y-3">
+                    {filteredTasks.map((task) => (
+                      <div 
+                        key={task.id} 
+                        className="task-card cursor-pointer group"
+                        draggable="true"
+                        onDragStart={(e) => startDrag(e, task.id, { type: 'week' })}
+                        onDragEnd={endDrag}
+                        onClick={() => handleEditClick(task)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-muted-foreground bg-background px-1.5 py-0.5 rounded-md border border-border">#{task.numero}</span>
                           </div>
-                        ));
-                      })()
-                    ) : (
-                      /* Cuando se selecciona un día específico, mostrar vista plana (sin agrupar) */
-                      <div className="space-y-3">
-                        {selectedDay === 'Sin fecha específica' && (
-                          <div className="flex items-center gap-2 mb-2 text-muted-foreground/60">
-                            <span className="text-[12px]">📅 Tareas sin fecha asignada</span>
+                          <AlarmIndicator task={task} />
+                        </div>
+                        
+                        <h3 className={`font-medium text-[14px] mb-3 leading-tight transition-colors ${task.estado === 'Hecho' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                          {task.tarea}
+                        </h3>
+                        
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoryBadgeClass(task.categoria_codigo)}`}>
+                            {task.categoria_codigo}
+                          </span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getPriorityBadgeClass(task.prioridad)}`}>
+                            {task.prioridad}
+                          </span>
+                        </div>
+
+                        {(task.fecha_vencimiento || (task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia')) && (
+                          <div className="flex flex-wrap gap-2 text-[10px] font-medium mb-3">
+                            {task.fecha_vencimiento && (
+                              <span className={`flex items-center gap-1 ${getDueDateColor(task.fecha_vencimiento)}`}>
+                                <Calendar className="w-3 h-3" />
+                                {new Date(task.fecha_vencimiento).toLocaleDateString()}
+                              </span>
+                            )}
+                            {task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia' && (
+                              <span className="flex items-center gap-1 text-muted-foreground">
+                                <RefreshCw className="w-3 h-3" />
+                                {task.tipo_recurrencia}
+                              </span>
+                            )}
                           </div>
                         )}
-                        {filteredTasks.map((task) => (
-                          <div 
-                            key={task.id} 
-                            className="task-card cursor-pointer group"
-                            draggable="true"
-                            onDragStart={(e) => startDrag(e, task.id, { type: 'week' })}
-                            onDragEnd={endDrag}
-                            onClick={() => handleEditClick(task)}
+                        
+                        <Select 
+                          value={task.estado} 
+                          onValueChange={(value) => handleEstadoChange(task.id, value)}
+                        >
+                          <SelectTrigger 
+                            className="bg-background border-border h-[44px] text-[13px]" 
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-muted-foreground bg-background px-1.5 py-0.5 rounded-md border border-border">#{task.numero}</span>
-                              </div>
-                              <AlarmIndicator task={task} />
-                            </div>
-                            
-                            <h3 className={`font-medium text-[14px] mb-3 leading-tight transition-colors ${task.estado === 'Hecho' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                              {task.tarea}
-                            </h3>
-                            
-                            <div className="flex flex-wrap gap-1.5 mb-3">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoryBadgeClass(task.categoria_codigo)}`}>
-                                {task.categoria_codigo}
-                              </span>
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${getPriorityBadgeClass(task.prioridad)}`}>
-                                {task.prioridad}
-                              </span>
-                            </div>
-
-                            {(task.fecha_vencimiento || (task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia')) && (
-                              <div className="flex flex-wrap gap-2 text-[10px] font-medium mb-3">
-                                {task.fecha_vencimiento && (
-                                  <span className={`flex items-center gap-1 ${getDueDateColor(task.fecha_vencimiento)}`}>
-                                    <Calendar className="w-3 h-3" />
-                                    {new Date(task.fecha_vencimiento).toLocaleDateString()}
-                                  </span>
-                                )}
-                                {task.tipo_recurrencia && task.tipo_recurrencia !== 'Sin recurrencia' && (
-                                  <span className="flex items-center gap-1 text-muted-foreground">
-                                    <RefreshCw className="w-3 h-3" />
-                                    {task.tipo_recurrencia}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            
-                            <Select 
-                              value={task.estado} 
-                              onValueChange={(value) => handleEstadoChange(task.id, value)}
-                            >
-                              <SelectTrigger 
-                                className="bg-background border-border h-[44px] text-[13px]" 
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Pendiente">Pendiente</SelectItem>
-                                <SelectItem value="En curso">En curso</SelectItem>
-                                <SelectItem value="Esperando">Esperando</SelectItem>
-                                <SelectItem value="Hecho">Hecho</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        ))}
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Pendiente">Pendiente</SelectItem>
+                            <SelectItem value="En curso">En curso</SelectItem>
+                            <SelectItem value="Esperando">Esperando</SelectItem>
+                            <SelectItem value="Hecho">Hecho</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                    )}
+                    ))}
                   </div>
                 )
               )
             )}
+            </div>
+          </div>
+            
+            {/* Right Sidebar: Tasks without date */}
+            <div className="lg:col-span-4 xl:col-span-3 h-full overflow-y-auto pl-2 pb-4">
+              <AvailableTasksSidebar 
+                tasks={tasksWithoutDate} 
+                title="Sin Fecha Asignada" 
+              />
+            </div>
+            
           </div>
         </main>
       </div>

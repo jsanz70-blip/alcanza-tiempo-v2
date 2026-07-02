@@ -1,10 +1,18 @@
-import React from 'react';
-import { Calendar, X, Bell, CheckCircle2, Circle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Calendar, X, Bell, CheckCircle2, Circle, FolderInput } from 'lucide-react';
 import { useDragDrop } from '@/hooks/useDragDrop.js';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
-const TaskCardInProject = ({ task, projectId, onRemove, onEdit, onToggleStatus }) => {
+const TaskCardInProject = ({ task, projectId, onRemove, onEdit, onToggleStatus, projects = [], onMoveToProject }) => {
   const { startDrag, endDrag, getDraggedItemClass } = useDragDrop();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleDragStart = (e) => {
     e.stopPropagation();
@@ -44,6 +52,60 @@ const TaskCardInProject = ({ task, projectId, onRemove, onEdit, onToggleStatus }
           </div>
           <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
             {task.hora_alarma && <Bell className="w-3.5 h-3.5 text-primary" />}
+            
+            {projects.length > 0 && onMoveToProject && (
+              <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <button 
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                    title="Mover a otro proyecto"
+                  >
+                    <FolderInput className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {projects
+                    .filter(p => p.id !== projectId)
+                    .map(project => (
+                      <DropdownMenuItem
+                        key={project.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMoveToProject(project.id, { taskId: task.id });
+                          setIsMenuOpen(false);
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-sm shrink-0" 
+                            style={{ backgroundColor: project.color || 'hsl(var(--primary))' }}
+                          />
+                          <span className="truncate">{project.nombre}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  {projects.filter(p => p.id !== projectId).length === 0 && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground text-center">
+                      No hay otros proyectos
+                    </div>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(task.id);
+                      setIsMenuOpen(false);
+                    }}
+                    className="cursor-pointer text-muted-foreground"
+                  >
+                    Desasignar de proyecto
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            
             <button 
               onClick={(e) => {
                 e.stopPropagation();

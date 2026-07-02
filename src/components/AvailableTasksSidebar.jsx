@@ -17,7 +17,7 @@ const AvailableTasksSidebar = ({ tasks, title }) => {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      const matchSearch = (task.tarea || '').toLowerCase().includes(search.toLowerCase());
+      const matchSearch = task.tarea.toLowerCase().includes(search.toLowerCase());
       const matchPriority = priorityFilter === 'all' || task.prioridad === priorityFilter;
       return matchSearch && matchPriority;
     });
@@ -41,7 +41,10 @@ const AvailableTasksSidebar = ({ tasks, title }) => {
           <div className="bg-primary/10 p-2 rounded-lg text-primary">
             <LayoutList className="w-5 h-5" />
           </div>
-          <h3 className="font-heading font-semibold text-lg text-foreground">{title}</h3>
+          <div>
+            <h3 className="font-heading font-semibold text-lg text-foreground">{title}</h3>
+            <p className="text-[10px] text-muted-foreground">Arrastra para asignar</p>
+          </div>
           <span className="text-xs bg-muted text-muted-foreground font-medium px-2.5 py-1 rounded-full">{filteredTasks.length}</span>
         </div>
         <button className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground">
@@ -85,8 +88,10 @@ const AvailableTasksSidebar = ({ tasks, title }) => {
             {filteredTasks.length === 0 ? (
               <div className="text-center py-16 flex flex-col items-center justify-center text-muted-foreground">
                 <LayoutList className="w-12 h-12 mb-4 opacity-20" />
-                <p className="text-sm font-medium">No hay tareas disponibles</p>
-                <p className="text-xs mt-1 text-muted-foreground/70">Crea tareas nuevas o desasigna existentes.</p>
+                <p className="text-sm font-medium">No hay tareas sin asignar</p>
+                <p className="text-xs mt-1 text-muted-foreground/70 max-w-[200px]">
+                  Las tareas asignadas a proyectos se ocultan automáticamente de esta lista.
+                </p>
               </div>
             ) : (
               filteredTasks.map(task => (

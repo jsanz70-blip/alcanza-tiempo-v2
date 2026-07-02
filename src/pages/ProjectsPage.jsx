@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, FolderKanban, ChevronDown, ChevronUp, Settings, LayoutList, LayoutGrid, GripVertical } from 'lucide-react';
+import { Plus, FolderKanban, ChevronDown, ChevronUp, Settings, LayoutList, LayoutGrid, GripVertical, Workflow } from 'lucide-react';
 import ProjectModal from '@/components/ProjectModal.jsx';
 import TaskCardInProject from '@/components/TaskCardInProject.jsx';
 import AvailableTasksSidebar from '@/components/AvailableTasksSidebar.jsx';
+import DetailPanel from '@/components/DetailPanel.jsx';
+import ProjectCascadeView from '@/components/ProjectCascadeView.jsx';
 import { useDragDrop } from '@/hooks/useDragDrop.js';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -79,6 +81,10 @@ const ProjectsPage = () => {
   
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  
+  // Task editing state
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
 
   const { onDragOver, onDragLeave, onDrop, getDropZoneClass } = useDragDrop();
 
@@ -201,6 +207,27 @@ const ProjectsPage = () => {
     }
   };
 
+  const handleEditTask = (task) => {
+    setSelectedTask(task);
+    setIsTaskDetailOpen(true);
+  };
+
+  const handleTaskUpdate = (updatedTask, isDeleted = false) => {
+    if (isDeleted) {
+      setTasks(prev => prev.filter(t => t.id !== updatedTask.id));
+    } else {
+      setTasks(prev => {
+        const exists = prev.find(t => t.id === updatedTask.id);
+        if (exists) {
+          return prev.map(t => t.id === updatedTask.id ? updatedTask : t);
+        } else {
+          return [...prev, updatedTask];
+        }
+      });
+    }
+    fetchData();
+  };
+
   // Drop on sidebar handler
   const handleDropTaskToSidebar = async (dragData) => {
     if (!dragData || !dragData.taskId) return;
@@ -294,6 +321,15 @@ const ProjectsPage = () => {
               >
                 <LayoutGrid className="w-4 h-4" />
               </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => handleViewModeChange('cascade')} 
+                className={`h-[34px] w-[34px] rounded-md transition-all ${viewMode === 'cascade' ? 'bg-primary/10 text-primary hover:bg-primary/15' : 'text-muted-foreground hover:text-foreground bg-transparent'}`}
+                title="Vista en Cascada"
+              >
+                <Workflow className="w-4 h-4" />
+              </Button>
             </div>
 
             <Button variant="outline" size="icon" className="h-10 w-10 shrink-0">
@@ -305,11 +341,11 @@ const ProjectsPage = () => {
           </div>
         </div>
 
-        <main className="max-w-[1600px] w-full mx-auto p-4 sm:p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
+        <main className="max-w-[1600px] w-full mx-auto p-4 sm:p-6 h-[calc(100vh-80px)] overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full h-full items-start">
             
-            {/* Left Column: Projects List/Grid */}
-            <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+            {/* Left Column: Projects List/Grid/Cascade */}
+            <div className="lg:col-span-8 xl:col-span-9 space-y-6 h-full overflow-y-auto pr-2">
               <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" : "space-y-6"}>
                 {loading ? (
                   Array(3).fill(0).map((_, i) => (
@@ -332,6 +368,26 @@ const ProjectsPage = () => {
                 ) : filteredProjects.map((project, index) => {
                   const isExpanded = expandedProject === project.id;
                   const stats = getProjectStats(project.id);
+
+                  // Cascade View
+                  if (viewMode === 'cascade') {
+                    return (
+                      <ProjectCascadeView
+                        key={project.id}
+                        project={project}
+                        tasks={stats.tasks}
+                        onTaskClick={handleEditTask}
+                        onToggleStatus={handleToggleTaskStatus}
+                        onDragOver={onDragOver}
+                        onDragLeave={onDragLeave}
+                        onDrop={(e, data) => {
+                          const result = onDrop(e, data);
+                          if (result?.success) handleDropTaskToProject(project.id, result.data);
+                        }}
+                        getDropZoneClass={getDropZoneClass}
+                      />
+                    );
+                  }
 
                   if (viewMode === 'grid') {
                     const isDraggingThis = draggedProjectIndex === index;
@@ -404,15 +460,6 @@ const ProjectsPage = () => {
                                 Sin descripción
                               </p>
                             )}
-                            {/* Notas del proyecto */}
-                            {project.notas ? (
-                              <div className="mb-3 p-2.5 bg-muted/30 border border-border/40 rounded-lg">
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">📝 Notas</p>
-                                <p className="text-[12px] text-muted-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-3">
-                                  {project.notas}
-                                </p>
-                              </div>
-                            ) : null}
                           </div>
 
                           {/* Progress Area */}
@@ -493,7 +540,9 @@ const ProjectsPage = () => {
                                         projectId={project.id} 
                                         onRemove={handleRemoveTaskFromProject}
                                         onToggleStatus={handleToggleTaskStatus}
-                                        onEdit={() => {}}
+                                        onEdit={handleEditTask}
+                                        projects={projects}
+                                        onMoveToProject={handleDropTaskToProject}
                                       />
                                     ))}
                                   </div>
@@ -566,14 +615,6 @@ const ProjectsPage = () => {
                             </span>
                           </div>
                           {project.descripcion && <p className="text-sm text-muted-foreground mb-4 line-clamp-1">{project.descripcion}</p>}
-                          {project.notas && (
-                            <div className="mb-3 p-2.5 bg-muted/30 border border-border/40 rounded-lg max-w-lg">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">📝 Notas</p>
-                              <p className="text-[12px] text-muted-foreground/70 leading-relaxed whitespace-pre-wrap line-clamp-2">
-                                {project.notas}
-                              </p>
-                            </div>
-                          )}
                           <div className="flex items-center gap-4 max-w-md">
                             <Progress value={stats.percent} className="h-2 flex-1 bg-muted" indicatorColor={project.color} />
                             <span className="text-xs font-semibold text-muted-foreground w-12 text-right tabular-nums">{stats.percent}%</span>
@@ -631,7 +672,9 @@ const ProjectsPage = () => {
                                       projectId={project.id} 
                                       onRemove={handleRemoveTaskFromProject}
                                       onToggleStatus={handleToggleTaskStatus}
-                                      onEdit={() => {}}
+                                      onEdit={handleEditTask}
+                                      projects={projects}
+                                      onMoveToProject={handleDropTaskToProject}
                                     />
                                   ))}
                                 </div>
@@ -646,9 +689,9 @@ const ProjectsPage = () => {
               </div>
             </div>
 
-            {/* Right Column: Sticky Available Tasks Sidebar */}
+            {/* Right Column: Available Tasks Sidebar with independent scroll */}
             <div 
-              className="lg:col-span-4 xl:col-span-3 space-y-6 pb-20"
+              className="lg:col-span-4 xl:col-span-3 h-full overflow-y-auto pl-2 pb-4"
               onDragOver={(e) => { e.preventDefault(); onDragOver(e, { type: 'sidebar' }); }}
               onDragLeave={(e) => onDragLeave(e, { type: 'sidebar' })}
               onDrop={(e) => {
@@ -657,9 +700,7 @@ const ProjectsPage = () => {
                 if (result?.success) handleDropTaskToSidebar(result.data);
               }}
             >
-              <div className="sticky top-[80px]">
-                <AvailableTasksSidebar tasks={unassignedTasks} title="Tareas Disponibles" />
-              </div>
+              <AvailableTasksSidebar tasks={unassignedTasks} title="Tareas Disponibles" />
             </div>
 
           </div>
@@ -672,6 +713,16 @@ const ProjectsPage = () => {
         project={editingProject}
         tasksCount={editingProject ? tasks.filter(t => t.proyecto_id === editingProject.id).length : 0}
         onSave={fetchData}
+      />
+
+      <DetailPanel
+        task={selectedTask}
+        isOpen={isTaskDetailOpen}
+        onClose={() => {
+          setIsTaskDetailOpen(false);
+          setSelectedTask(null);
+        }}
+        onUpdate={handleTaskUpdate}
       />
     </>
   );
