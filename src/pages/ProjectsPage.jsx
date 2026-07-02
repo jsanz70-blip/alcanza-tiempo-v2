@@ -91,15 +91,15 @@ const ProjectsPage = () => {
   // Listen for realtime changes from other devices
   useRealtimeSync(['tareas', 'projects'], useCallback((event) => {
     console.log('[ProjectsPage] Realtime change detected:', event.table, event.eventType);
-    fetchData();
+    fetchData(true);
   }, []));
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (skipLoading = false) => {
+    if (skipLoading) {} else { setLoading(true); }
     try {
       const [projRes, taskRes] = await Promise.all([
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
@@ -341,11 +341,11 @@ const ProjectsPage = () => {
           </div>
         </div>
 
-        <main className="max-w-[1600px] w-full mx-auto p-4 sm:p-6 h-[calc(100vh-80px)] overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full h-full items-start">
+        <main className="max-w-[1600px] w-full mx-auto p-4 sm:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
             
             {/* Left Column: Projects List/Grid/Cascade */}
-            <div className="lg:col-span-8 xl:col-span-9 space-y-6 h-full overflow-y-auto pr-2">
+            <div className="lg:col-span-8 xl:col-span-9 space-y-6">
               <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" : "space-y-6"}>
                 {loading ? (
                   Array(3).fill(0).map((_, i) => (
@@ -689,9 +689,9 @@ const ProjectsPage = () => {
               </div>
             </div>
 
-            {/* Right Column: Available Tasks Sidebar with independent scroll */}
+            {/* Right Column: Available Tasks Sidebar with sticky positioning */}
             <div 
-              className="lg:col-span-4 xl:col-span-3 h-full overflow-y-auto pl-2 pb-4"
+              className="lg:col-span-4 xl:col-span-3 pb-20"
               onDragOver={(e) => { e.preventDefault(); onDragOver(e, { type: 'sidebar' }); }}
               onDragLeave={(e) => onDragLeave(e, { type: 'sidebar' })}
               onDrop={(e) => {
@@ -700,7 +700,9 @@ const ProjectsPage = () => {
                 if (result?.success) handleDropTaskToSidebar(result.data);
               }}
             >
-              <AvailableTasksSidebar tasks={unassignedTasks} title="Tareas Disponibles" />
+              <div className="sticky top-[80px]">
+                <AvailableTasksSidebar tasks={unassignedTasks} title="Tareas Disponibles" />
+              </div>
             </div>
 
           </div>

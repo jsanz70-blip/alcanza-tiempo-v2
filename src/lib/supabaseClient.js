@@ -809,36 +809,17 @@ if (typeof window !== 'undefined') {
     startRealtimeSubscription();
   }, 1000);
   
-  // Also handle visibility change (when app comes back to foreground)
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-      console.log('App became visible. Triggering sync...');
-      triggerSync();
-      startRealtimeSubscription();
-    }
-  });
-  
-  // Handle page visibility changes more explicitly
+  // Handle page visibility changes (when app comes back to foreground)
   let isPageVisible = !document.hidden;
   document.addEventListener('visibilitychange', () => {
     const wasVisible = isPageVisible;
     isPageVisible = !document.hidden;
     
-    if (wasVisible && !isPageVisible) {
-      console.log('App went to background');
-    } else if (!wasVisible && isPageVisible) {
+    if (!wasVisible && isPageVisible) {
       console.log('App came to foreground');
-      // When app comes back to foreground, check for sync
       triggerSync();
       startRealtimeSubscription();
     }
-  });
-  
-  // Also listen for page focus events
-  window.addEventListener('focus', () => {
-    console.log('App focused');
-    triggerSync();
-    startRealtimeSubscription();
   });
 }
 

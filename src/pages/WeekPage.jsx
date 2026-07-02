@@ -35,7 +35,7 @@ const WeekPage = () => {
   // Listen for realtime changes from other devices
   useRealtimeSync(['tareas'], useCallback((event) => {
     console.log('[WeekPage] Realtime change detected:', event.table, event.eventType);
-    fetchTasks();
+    fetchTasks(true);
   }, []));
 
   useEffect(() => {
@@ -71,7 +71,8 @@ const WeekPage = () => {
     }
   }, [selectedDay, tasks, groupedTasks, overdueTasks]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (skipLoading = false) => {
+    if (!skipLoading) setLoading(true);
     try {
       const { data, error } = await supabase
         .from('tareas')
@@ -283,11 +284,11 @@ const WeekPage = () => {
           </div>
         </div>
         
-        <main className="max-w-[1600px] w-full mx-auto px-3 py-4 h-[calc(100vh-80px)] overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full h-full items-start">
+        <main className="max-w-[1600px] w-full mx-auto px-3 py-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
             
             {/* Main Content */}
-            <div className="lg:col-span-8 xl:col-span-9 h-full overflow-y-auto pr-2">
+            <div className="lg:col-span-8 xl:col-span-9">
           <div key={viewMode} className="animate-fade-in view-transition">
             {loading ? (
               <div className="space-y-3">
@@ -423,11 +424,13 @@ const WeekPage = () => {
           </div>
             
             {/* Right Sidebar: Tasks without date */}
-            <div className="lg:col-span-4 xl:col-span-3 h-full overflow-y-auto pl-2 pb-4">
-              <AvailableTasksSidebar 
-                tasks={tasksWithoutDate} 
-                title="Sin Fecha Asignada" 
-              />
+            <div className="lg:col-span-4 xl:col-span-3 pb-20">
+              <div className="sticky top-[80px]">
+                <AvailableTasksSidebar 
+                  tasks={tasksWithoutDate} 
+                  title="Sin Fecha Asignada" 
+                />
+              </div>
             </div>
             
           </div>
