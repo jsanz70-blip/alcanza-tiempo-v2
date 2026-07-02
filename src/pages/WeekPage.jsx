@@ -223,9 +223,9 @@ const WeekPage = () => {
 
   const handleDetailPanelUpdate = (updatedTask, isDeleted = false) => {
     if (isDeleted || updatedTask.estado === 'Hecho') {
-      setTasks(tasks.filter(t => t.id !== updatedTask.id));
+      setTasks(prev => prev.filter(t => t.id !== updatedTask.id));
     } else {
-      setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
+      setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
     }
   };
 

@@ -169,7 +169,7 @@ const AllTasksPage = () => {
         .single();
         
       if (error) throw error;
-      setTasks(tasks.map(t => t.id === taskId ? data : t));
+      setTasks(prev => prev.map(t => t.id === taskId ? data : t));
       toast.success('Fecha asignada');
     } catch (error) {
       console.error('Error assigning date:', error);
@@ -187,7 +187,7 @@ const AllTasksPage = () => {
         .single();
         
       if (error) throw error;
-      setTasks(tasks.map(t => t.id === taskId ? data : t));
+      setTasks(prev => prev.map(t => t.id === taskId ? data : t));
       toast.success(isChecked ? 'Tarea completada' : 'Tarea pendiente');
     } catch (error) {
       console.error('Error updating task status:', error);

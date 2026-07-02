@@ -175,9 +175,9 @@ const TodayPage = () => {
       if (error) throw error;
       
       if (isCompleting) {
-        setTasks(tasks.filter(t => t.id !== taskId));
+        setTasks(prev => prev.filter(t => t.id !== taskId));
       } else {
-        setTasks(tasks.map(t => t.id === taskId ? data : t));
+        setTasks(prev => prev.map(t => t.id === taskId ? data : t));
       }
 
       const projectId = updates.proyecto_id !== undefined ? updates.proyecto_id : task?.proyecto_id;
@@ -220,7 +220,7 @@ const TodayPage = () => {
 
   const handleDetailPanelUpdate = async (updatedTask, isDeleted = false) => {
     if (isDeleted || updatedTask.estado === 'Hecho') {
-      setTasks(tasks.filter(t => t.id !== updatedTask.id));
+      setTasks(prev => prev.filter(t => t.id !== updatedTask.id));
       if (updatedTask.proyecto_id) await updateProjectProgress(updatedTask.proyecto_id);
     } else {
       const belongsInCurrentView = activeFilter === 'recurrentes' 
@@ -228,9 +228,9 @@ const TodayPage = () => {
         : updatedTask.frecuencia === 'Puntual';
 
       if (belongsInCurrentView) {
-        setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
+        setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
       } else {
-        setTasks(tasks.filter(t => t.id !== updatedTask.id));
+        setTasks(prev => prev.filter(t => t.id !== updatedTask.id));
       }
     }
   };
