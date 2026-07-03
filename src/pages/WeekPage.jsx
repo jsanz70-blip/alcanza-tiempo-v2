@@ -288,7 +288,7 @@ const WeekPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
             
             {/* Main Content */}
-            <div className="lg:col-span-8 xl:col-span-9">
+            <div className="lg:col-span-8 xl:col-span-9 min-h-screen">
           <div key={viewMode} className="animate-fade-in view-transition">
             {loading ? (
               <div className="space-y-3">
@@ -423,9 +423,9 @@ const WeekPage = () => {
             </div>
           </div>
             
-            {/* Right Sidebar: Tasks without date */}
-            <div className="lg:col-span-4 xl:col-span-3 pb-20">
-              <div className="sticky top-[80px]">
+            {/* Right Sidebar: Tasks without date - fixed position on desktop */}
+            <div className="lg:col-span-4 xl:col-span-3">
+              <div className="lg:fixed lg:top-[80px] lg:right-4 lg:w-[calc(25%-2rem)] xl:w-[calc(25%-2.5rem)] lg:h-[calc(100vh-100px)] lg:z-30">
                 <AvailableTasksSidebar 
                   tasks={tasksWithoutDate} 
                   title="Sin Fecha Asignada" 

@@ -345,7 +345,7 @@ const ProjectsPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
             
             {/* Left Column: Projects List/Grid/Cascade */}
-            <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+            <div className="lg:col-span-8 xl:col-span-9 space-y-6 min-h-screen">
               <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" : "space-y-6"}>
                 {loading ? (
                   Array(3).fill(0).map((_, i) => (
@@ -689,9 +689,9 @@ const ProjectsPage = () => {
               </div>
             </div>
 
-            {/* Right Column: Available Tasks Sidebar with sticky positioning */}
+            {/* Right Column: Available Tasks Sidebar - fixed position on desktop, independent scroll */}
             <div 
-              className="lg:col-span-4 xl:col-span-3 pb-20"
+              className="lg:col-span-4 xl:col-span-3"
               onDragOver={(e) => { e.preventDefault(); onDragOver(e, { type: 'sidebar' }); }}
               onDragLeave={(e) => onDragLeave(e, { type: 'sidebar' })}
               onDrop={(e) => {
@@ -700,7 +700,7 @@ const ProjectsPage = () => {
                 if (result?.success) handleDropTaskToSidebar(result.data);
               }}
             >
-              <div className="sticky top-[80px]">
+              <div className="lg:fixed lg:top-[80px] lg:right-4 lg:w-[calc(25%-2rem)] xl:w-[calc(25%-2.5rem)] lg:h-[calc(100vh-100px)] lg:z-30">
                 <AvailableTasksSidebar tasks={unassignedTasks} title="Tareas Disponibles" />
               </div>
             </div>

@@ -32,7 +32,7 @@ const AvailableTasksSidebar = ({ tasks, title }) => {
   };
 
   return (
-    <div className="bg-card border border-border rounded-2xl flex flex-col mb-4 overflow-hidden shadow-sm h-full max-h-[calc(100vh-120px)] sticky top-24">
+    <div className="bg-card border border-border rounded-2xl flex flex-col mb-4 overflow-hidden shadow-sm h-full lg:h-full max-h-[calc(100vh-120px)]">
       <div 
         className="p-5 border-b border-border flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
