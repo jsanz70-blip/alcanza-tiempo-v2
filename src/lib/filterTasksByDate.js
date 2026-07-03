@@ -62,7 +62,7 @@ export const filterGoalsExcludingCompleted = (tasks) => {
 
 export const groupTasksByWeekDay = (tasks, referenceDate = new Date()) => {
   const groups = {
-    'Sin fecha específica': []
+    'A Futuro': []
   };
 
   const ref = new Date(referenceDate);
@@ -80,8 +80,14 @@ export const groupTasksByWeekDay = (tasks, referenceDate = new Date()) => {
   }
 
   tasks.forEach(task => {
+    // Tasks with estado 'A Futuro' go to A Futuro group
+    if (task.estado === 'A Futuro') {
+      groups['A Futuro'].push(task);
+      return;
+    }
+
+    // Tasks without a date (and not A Futuro) don't go to any day group
     if (!task.fecha_vencimiento || task.fecha_vencimiento.trim() === '') {
-      groups['Sin fecha específica'].push(task);
       return;
     }
 
@@ -98,11 +104,9 @@ export const groupTasksByWeekDay = (tasks, referenceDate = new Date()) => {
       const key = `${dayName} ${dateStr}`;
       if (groups[key]) {
         groups[key].push(task);
-      } else {
-        groups['Sin fecha específica'].push(task);
       }
     } else {
-      groups['Sin fecha específica'].push(task);
+      // Tasks outside the week range don't go to any day group
     }
   });
 

@@ -35,6 +35,7 @@ export const useDragDrop = () => {
     if (source.type === 'task' && target.type === 'sidebar') return true; // to unassign
     if (source.type === 'task' && target.type === 'slot') return true; // for daily objectives
     if (source.type === 'task' && target.type === 'week') return true; // drag from sidebar to week day
+    if (source.type === 'week' && target.type === 'sidebar') return true; // drag from week to sidebar
     if (source.type === 'slot-task' && target.type === 'sidebar') return true; // move from slot back to sidebar
     
     if (source.type === 'kanban' && target.type === 'kanban') return true;

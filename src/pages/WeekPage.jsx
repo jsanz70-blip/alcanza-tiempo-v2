@@ -56,9 +56,9 @@ const WeekPage = () => {
     });
   }, [tasks]);
   
-  // Get tasks without specific date
+  // Get tasks without specific date (for sidebar) - exclude 'A Futuro' and 'Hecho'
   const tasksWithoutDate = useMemo(() => {
-    return tasks.filter(t => !t.fecha_vencimiento && t.estado !== 'Hecho');
+    return tasks.filter(t => !t.fecha_vencimiento && t.estado !== 'Hecho' && t.estado !== 'A Futuro');
   }, [tasks]);
   
   const days = ['Vencidas', ...Object.keys(groupedTasks)];
@@ -147,6 +147,25 @@ const WeekPage = () => {
     const task = tasks.find(t => t.id === data.taskId);
     if (!task) return;
 
+    // Dropping to 'A Futuro' - set estado to 'A Futuro' and clear date
+    if (targetDay === 'A Futuro') {
+      const updatedTask = { ...task, estado: 'A Futuro', fecha_vencimiento: null };
+      setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
+      toast.success('Movido a A Futuro');
+      try {
+        const { error } = await supabase
+          .from('tareas')
+          .update({ estado: 'A Futuro', fecha_vencimiento: null })
+          .eq('id', task.id);
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error moving task:', error);
+        toast.error('Error al mover la tarea');
+        setTasks(prev => prev.map(t => t.id === task.id ? task : t));
+      }
+      return;
+    }
+
     let newDateStr = task.fecha_vencimiento;
     if (targetDay !== 'Sin fecha específica') {
       const datePart = targetDay.split(' ')[1];
@@ -160,15 +179,18 @@ const WeekPage = () => {
       newDateStr = null;
     }
 
+    // If coming from 'A Futuro', reset estado to 'Pendiente'
+    const newEstado = task.estado === 'A Futuro' ? 'Pendiente' : task.estado;
+
     // Optimistic update
-    const updatedTask = { ...task, fecha_vencimiento: newDateStr };
+    const updatedTask = { ...task, fecha_vencimiento: newDateStr, estado: newEstado };
     setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
     toast.success(`Movido a ${targetDay}`);
 
     try {
       const { error } = await supabase
         .from('tareas')
-        .update({ fecha_vencimiento: newDateStr })
+        .update({ fecha_vencimiento: newDateStr, estado: newEstado })
         .eq('id', task.id);
 
       if (error) throw error;
@@ -214,6 +236,29 @@ const WeekPage = () => {
     const result = onDrop(e, { id: `day-${targetDay}`, type: 'week' });
     if (!result.success || !result.data) return;
     onGridDrop(result.data, `day-${targetDay}`);
+  };
+
+  const handleDropToSidebar = async (dragData) => {
+    if (!dragData || !dragData.taskId) return;
+    const task = tasks.find(t => t.id === dragData.taskId);
+    if (!task) return;
+
+    // Moving to sidebar = remove from A Futuro, set estado to Pendiente, clear date
+    const updatedTask = { ...task, estado: 'Pendiente', fecha_vencimiento: null };
+    setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
+    toast.success('Tarea movida a Sin Fecha Asignada');
+
+    try {
+      const { error } = await supabase
+        .from('tareas')
+        .update({ estado: 'Pendiente', fecha_vencimiento: null })
+        .eq('id', task.id);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error moving task to sidebar:', error);
+      toast.error('Error al mover la tarea');
+      setTasks(prev => prev.map(t => t.id === task.id ? task : t));
+    }
   };
 
   const handleEditClick = (task) => {
@@ -411,6 +456,7 @@ const WeekPage = () => {
                             <SelectItem value="Pendiente">Pendiente</SelectItem>
                             <SelectItem value="En curso">En curso</SelectItem>
                             <SelectItem value="Esperando">Esperando</SelectItem>
+                            <SelectItem value="A Futuro">A Futuro</SelectItem>
                             <SelectItem value="Hecho">Hecho</SelectItem>
                           </SelectContent>
                         </Select>
@@ -430,6 +476,7 @@ const WeekPage = () => {
                   tasks={tasksWithoutDate} 
                   title="Sin Fecha Asignada"
                   onEdit={(task) => handleEditClick(task)}
+                  onDropTask={handleDropToSidebar}
                 />
               </div>
             </div>

@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDragDrop } from '@/hooks/useDragDrop.js';
 
-const AvailableTasksSidebar = ({ tasks, title, onEdit }) => {
+const AvailableTasksSidebar = ({ tasks, title, onEdit, onDropTask }) => {
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [isExpanded, setIsExpanded] = useState(true);
@@ -12,7 +12,10 @@ const AvailableTasksSidebar = ({ tasks, title, onEdit }) => {
   const { startDrag, endDrag, onDragOver, onDragLeave, onDrop, getDropZoneClass, getDraggedItemClass } = useDragDrop();
 
   const handleDrop = (e) => {
-    onDrop(e, { type: 'sidebar' });
+    const result = onDrop(e, { type: 'sidebar' });
+    if (result?.success && result.data && onDropTask) {
+      onDropTask(result.data);
+    }
   };
 
   const filteredTasks = useMemo(() => {
