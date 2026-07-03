@@ -34,39 +34,39 @@ const AvailableTasksSidebar = ({ tasks, title, onEdit }) => {
   return (
     <div className="bg-card border border-border rounded-2xl flex flex-col mb-4 overflow-hidden shadow-sm h-full lg:h-full max-h-[calc(100vh-120px)]">
       <div 
-        className="p-5 border-b border-border flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors"
+        className="px-3 py-2 border-b border-border flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2 rounded-lg text-primary">
-            <LayoutList className="w-5 h-5" />
+        <div className="flex items-center gap-2">
+          <div className="bg-primary/10 p-1.5 rounded-lg text-primary">
+            <LayoutList className="w-4 h-4" />
           </div>
-          <div>
-            <h3 className="font-heading font-semibold text-lg text-foreground">{title}</h3>
-            <p className="text-[10px] text-muted-foreground">Arrastra para asignar</p>
-          </div>
-          <span className="text-xs bg-muted text-muted-foreground font-medium px-2.5 py-1 rounded-full">{filteredTasks.length}</span>
+          <h3 className="font-heading font-semibold text-sm text-foreground">{title}</h3>
+          <span className="text-[10px] bg-muted text-muted-foreground font-medium px-2 py-0.5 rounded-full">{filteredTasks.length}</span>
         </div>
-        <button className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground">
-          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground hidden sm:inline">Arrastra para asignar</span>
+          <button className="p-1 hover:bg-muted rounded-lg transition-colors text-muted-foreground">
+            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
 
       {isExpanded && (
         <div className="flex flex-col flex-1 min-h-0">
-          <div className="p-4 space-y-3 border-b border-border bg-muted/10 shrink-0">
+          <div className="px-3 py-2 space-y-2 border-b border-border bg-muted/10 shrink-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input 
                 placeholder="Buscar tareas..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-background"
+                className="pl-9 bg-background h-8 text-sm"
               />
             </div>
             <div className="flex gap-2">
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-full bg-background text-sm h-10">
+                <SelectTrigger className="w-full bg-background text-sm h-8">
                   <SelectValue placeholder="Prioridad" />
                 </SelectTrigger>
                 <SelectContent>
@@ -80,7 +80,7 @@ const AvailableTasksSidebar = ({ tasks, title, onEdit }) => {
           </div>
 
           <div 
-            className={`flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide border-2 border-transparent transition-colors ${getDropZoneClass({ type: 'sidebar' })}`}
+            className={`flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide border-2 border-transparent transition-colors ${getDropZoneClass({ type: 'sidebar' })}`}
             onDragOver={(e) => onDragOver(e, { type: 'sidebar' })}
             onDragLeave={(e) => onDragLeave(e, { type: 'sidebar' })}
             onDrop={handleDrop}
@@ -97,13 +97,13 @@ const AvailableTasksSidebar = ({ tasks, title, onEdit }) => {
               filteredTasks.map(task => (
                 <div 
                   key={task.id}
-                  className={`bg-background border border-border p-4 rounded-xl shadow-sm group cursor-pointer ${getDraggedItemClass(task.id)}`}
+                  className={`bg-background border border-border p-3 rounded-xl shadow-sm group cursor-pointer ${getDraggedItemClass(task.id)}`}
                   draggable
                   onDragStart={(e) => startDrag(e, task.id, { type: 'task', taskId: task.id, sourceObj: 'sidebar' })}
                   onDragEnd={endDrag}
                   onClick={() => onEdit && onEdit(task)}
                 >
-                  <h4 className="font-medium text-sm text-foreground leading-snug mb-3">
+                  <h4 className="font-medium text-xs text-foreground leading-snug mb-2">
                     {task.tarea}
                   </h4>
                   
