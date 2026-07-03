@@ -39,13 +39,14 @@ const AllTasksPage = () => {
   const [isDaySelectorOpen, setIsDaySelectorOpen] = useState(false);
   const [taskForDayMove, setTaskForDayMove] = useState(null);
 
+  const [taskFilter, setTaskFilter] = useState('vigentes');
   const [addingTaskInEstado, setAddingTaskInEstado] = useState(null);
   const [newTaskName, setNewTaskName] = useState('');
 
   const [expandedSections, setExpandedSections] = useState({
     Pendiente: true,
     'En curso': true,
-    Hecho: false
+    Hecho: true
   });
 
   const { startDrag, endDrag, getDropZoneClass, getDraggedItemClass } = useDragDrop();
@@ -72,7 +73,7 @@ const AllTasksPage = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [tasks, searchQuery, selectedCategory, selectedFrequency, selectedPriority, selectedBloque]);
+  }, [tasks, searchQuery, selectedCategory, selectedFrequency, selectedPriority, selectedBloque, taskFilter]);
 
   const fetchData = async () => {
     try {
@@ -97,6 +98,12 @@ const AllTasksPage = () => {
 
   const applyFilters = () => {
     let filtered = [...tasks];
+    
+    if (taskFilter === 'vigentes') {
+      filtered = filtered.filter(task => task.estado !== 'Hecho');
+    } else if (taskFilter === 'completadas') {
+      filtered = filtered.filter(task => task.estado === 'Hecho');
+    }
     
     if (searchQuery) {
       filtered = filtered.filter(task => 
@@ -299,6 +306,23 @@ const AllTasksPage = () => {
               }
             />
             
+            <div className="flex items-center gap-2 mt-3">
+              <div className="flex gap-1 bg-muted rounded-full p-1">
+                <button
+                  onClick={() => setTaskFilter('vigentes')}
+                  className={`px-3 py-1 rounded-full text-[12px] font-medium transition-all ${taskFilter === 'vigentes' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Vigentes
+                </button>
+                <button
+                  onClick={() => setTaskFilter('completadas')}
+                  className={`px-3 py-1 rounded-full text-[12px] font-medium transition-all ${taskFilter === 'completadas' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Completadas
+                </button>
+              </div>
+            </div>
+
             <div className="relative mb-3 mt-3">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
