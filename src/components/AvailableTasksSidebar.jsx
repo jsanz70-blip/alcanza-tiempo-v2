@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ChevronDown, ChevronUp, LayoutList } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, LayoutList, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDragDrop } from '@/hooks/useDragDrop.js';
 
-const AvailableTasksSidebar = ({ tasks, title, onEdit, onDropTask }) => {
+const AvailableTasksSidebar = ({ tasks, title, onEdit, onDropTask, onComplete }) => {
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [isExpanded, setIsExpanded] = useState(true);
@@ -106,9 +106,24 @@ const AvailableTasksSidebar = ({ tasks, title, onEdit, onDropTask }) => {
                   onDragEnd={endDrag}
                   onClick={() => onEdit && onEdit(task)}
                 >
-                  <h4 className="font-medium text-xs text-foreground leading-snug mb-2">
+                  <div className="flex items-start gap-2">
+                    {onComplete && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onComplete(task.id, task.estado === 'Hecho' ? 'Pendiente' : 'Hecho');
+                        }}
+                        className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all mt-0.5 ${task.estado === 'Hecho' ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30 hover:border-primary'}`}
+                      >
+                        {task.estado === 'Hecho' && <Check className="w-3 h-3" />}
+                      </button>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-xs text-foreground leading-snug mb-2">
                     {task.tarea}
                   </h4>
+                    </div>
+                  </div>
                   
                   <div className="flex flex-wrap items-center gap-2 mt-auto">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ${getPriorityBadgeClass(task.prioridad)}`}>

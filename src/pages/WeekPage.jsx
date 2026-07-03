@@ -14,7 +14,7 @@ import { GridLayout } from '@/components/GridLayout.jsx';
 import { GridTaskCard } from '@/components/GridTaskCard.jsx';
 import DetailPanel from '@/components/DetailPanel.jsx';
 import AlarmIndicator from '@/components/AlarmIndicator.jsx';
-import { Calendar, RefreshCw, Clock } from 'lucide-react';
+import { Calendar, RefreshCw, Clock, Check } from 'lucide-react';
 import { filterTasksByWeekExcludingCompleted, groupTasksByWeekDay } from '@/lib/filterTasksByDate.js';
 import AvailableTasksSidebar from '@/components/AvailableTasksSidebar.jsx';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync.js';
@@ -407,6 +407,15 @@ const WeekPage = () => {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEstadoChange(task.id, task.estado === 'Hecho' ? 'Pendiente' : 'Hecho');
+                              }}
+                              className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${task.estado === 'Hecho' ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30 hover:border-primary'}`}
+                            >
+                              {task.estado === 'Hecho' && <Check className="w-4 h-4" />}
+                            </button>
                             <span className="text-[10px] font-bold text-muted-foreground bg-background px-1.5 py-0.5 rounded-md border border-border">#{task.numero}</span>
                           </div>
                           <AlarmIndicator task={task} />
@@ -477,6 +486,7 @@ const WeekPage = () => {
                   title="Sin Fecha Asignada"
                   onEdit={(task) => handleEditClick(task)}
                   onDropTask={handleDropToSidebar}
+                  onComplete={(taskId, newEstado) => handleEstadoChange(taskId, newEstado)}
                 />
               </div>
             </div>

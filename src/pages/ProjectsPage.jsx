@@ -701,7 +701,7 @@ const ProjectsPage = () => {
               }}
             >
               <div className="lg:fixed lg:top-[80px] lg:right-4 lg:w-[calc(25%-2rem)] xl:w-[calc(25%-2.5rem)] lg:h-[calc(100vh-100px)] lg:z-30">
-                <AvailableTasksSidebar tasks={unassignedTasks} title="Tareas Disponibles" onEdit={(task) => { setSelectedTask(task); setIsTaskDetailOpen(true); }} />
+                <AvailableTasksSidebar tasks={unassignedTasks} title="Tareas Disponibles" onEdit={(task) => { setSelectedTask(task); setIsTaskDetailOpen(true); }} onComplete={(taskId, newEstado) => handleToggleTaskStatus({ id: taskId, estado: newEstado === 'Hecho' ? 'Pendiente' : 'Hecho' })} />
               </div>
             </div>
 
