@@ -52,6 +52,10 @@ export const filterTasksByWeekExcludingCompleted = (tasks, referenceDate = new D
   return filterTasksByDate(tasks, 'week', referenceDate).filter(t => t.estado !== 'Hecho');
 };
 
+export const filterTasksByWeek = (tasks, referenceDate = new Date()) => {
+  return filterTasksByDate(tasks, 'week', referenceDate);
+};
+
 export const filterRoutinesExcludingCompleted = (tasks) => {
   return filterTasksByDate(tasks, 'routines').filter(t => t.estado !== 'Hecho');
 };

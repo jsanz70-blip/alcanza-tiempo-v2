@@ -15,7 +15,7 @@ import { GridTaskCard } from '@/components/GridTaskCard.jsx';
 import DetailPanel from '@/components/DetailPanel.jsx';
 import AlarmIndicator from '@/components/AlarmIndicator.jsx';
 import { Calendar, RefreshCw, Clock, Check } from 'lucide-react';
-import { filterTasksByWeekExcludingCompleted, groupTasksByWeekDay } from '@/lib/filterTasksByDate.js';
+import { filterTasksByWeek, groupTasksByWeekDay } from '@/lib/filterTasksByDate.js';
 import AvailableTasksSidebar from '@/components/AvailableTasksSidebar.jsx';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync.js';
 
@@ -24,6 +24,7 @@ const WeekPage = () => {
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [selectedDay, setSelectedDay] = useState('Vencidas');
   const [loading, setLoading] = useState(true);
+  const [taskFilter, setTaskFilter] = useState('vigentes');
   
   const [viewMode, setViewMode] = useViewPreference('week', 'list');
   const [selectedTaskToEdit, setSelectedTaskToEdit] = useState(null);
@@ -42,34 +43,40 @@ const WeekPage = () => {
     fetchTasks();
   }, []);
 
-  const groupedTasks = useMemo(() => groupTasksByWeekDay(tasks), [tasks]);
+  // Group tasks by day - only vigentes for day grouping
+  const activeTasks = useMemo(() => tasks.filter(t => t.estado !== 'Hecho'), [tasks]);
+  const completedTasks = useMemo(() => tasks.filter(t => t.estado === 'Hecho'), [tasks]);
+  
+  const groupedTasks = useMemo(() => groupTasksByWeekDay(activeTasks), [activeTasks]);
   
   // Get overdue tasks (past dates, not completed)
   const overdueTasks = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return tasks.filter(t => {
-      if (!t.fecha_vencimiento || t.estado === 'Hecho') return false;
+    return activeTasks.filter(t => {
+      if (!t.fecha_vencimiento) return false;
       const dueDate = new Date(t.fecha_vencimiento);
       dueDate.setHours(0, 0, 0, 0);
       return dueDate < today;
     });
-  }, [tasks]);
+  }, [activeTasks]);
   
   // Get tasks without specific date (for sidebar) - exclude 'A Futuro' and 'Hecho'
   const tasksWithoutDate = useMemo(() => {
-    return tasks.filter(t => !t.fecha_vencimiento && t.estado !== 'Hecho' && t.estado !== 'A Futuro');
-  }, [tasks]);
+    return activeTasks.filter(t => !t.fecha_vencimiento && t.estado !== 'A Futuro');
+  }, [activeTasks]);
   
   const days = ['Vencidas', ...Object.keys(groupedTasks)];
 
   useEffect(() => {
-    if (selectedDay === 'Vencidas') {
+    if (taskFilter === 'completadas') {
+      setFilteredTasks(completedTasks);
+    } else if (selectedDay === 'Vencidas') {
       setFilteredTasks(overdueTasks);
     } else {
       setFilteredTasks(groupedTasks[selectedDay] || []);
     }
-  }, [selectedDay, tasks, groupedTasks, overdueTasks]);
+  }, [selectedDay, tasks, groupedTasks, overdueTasks, taskFilter, completedTasks]);
 
   const fetchTasks = async (skipLoading = false) => {
     if (!skipLoading) setLoading(true);
@@ -81,7 +88,7 @@ const WeekPage = () => {
         
       if (error) throw error;
       
-      const weekTasks = filterTasksByWeekExcludingCompleted(data);
+      const weekTasks = filterTasksByWeek(data);
       setTasks(weekTasks);
       setFilteredTasks(weekTasks);
     } catch (error) {
@@ -130,7 +137,7 @@ const WeekPage = () => {
       if (error) throw error;
       
       if (isCompleting) {
-        setTasks(prev => prev.filter(t => t.id !== taskId));
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, estado: 'Hecho' } : t));
       } else {
         setTasks(prev => prev.map(t => t.id === taskId ? data : t));
       }
@@ -267,7 +274,7 @@ const WeekPage = () => {
   };
 
   const handleDetailPanelUpdate = (updatedTask, isDeleted = false) => {
-    if (isDeleted || updatedTask.estado === 'Hecho') {
+    if (isDeleted) {
       setTasks(prev => prev.filter(t => t.id !== updatedTask.id));
     } else {
       setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
@@ -309,7 +316,24 @@ const WeekPage = () => {
               moduleName="week"
             />
             
-            {viewMode === 'list' && (
+            <div className="flex items-center justify-between gap-2 mt-3">
+              <div className="flex gap-1 bg-muted rounded-full p-1">
+                <button
+                  onClick={() => setTaskFilter('vigentes')}
+                  className={`px-3 py-1 rounded-full text-[12px] font-medium transition-all ${taskFilter === 'vigentes' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Vigentes
+                </button>
+                <button
+                  onClick={() => setTaskFilter('completadas')}
+                  className={`px-3 py-1 rounded-full text-[12px] font-medium transition-all ${taskFilter === 'completadas' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Completadas
+                </button>
+              </div>
+            </div>
+
+            {viewMode === 'list' && taskFilter === 'vigentes' && (
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-3 px-3 mt-4">
                 {days.map((day) => (
                   <Button
