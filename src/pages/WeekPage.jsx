@@ -130,9 +130,9 @@ const WeekPage = () => {
       if (error) throw error;
       
       if (isCompleting) {
-        setTasks(tasks.filter(t => t.id !== taskId));
+        setTasks(prev => prev.filter(t => t.id !== taskId));
       } else {
-        setTasks(tasks.map(t => t.id === taskId ? data : t));
+        setTasks(prev => prev.map(t => t.id === taskId ? data : t));
       }
     } catch (error) {
       console.error('Error updating estado:', error);
@@ -162,7 +162,7 @@ const WeekPage = () => {
 
     // Optimistic update
     const updatedTask = { ...task, fecha_vencimiento: newDateStr };
-    setTasks(tasks.map(t => t.id === task.id ? updatedTask : t));
+    setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
     toast.success(`Movido a ${targetDay}`);
 
     try {
@@ -175,7 +175,7 @@ const WeekPage = () => {
     } catch (error) {
       console.error('Error moving task:', error);
       toast.error('Error al mover la tarea');
-      setTasks(tasks.map(t => t.id === task.id ? task : t));
+      setTasks(prev => prev.map(t => t.id === task.id ? task : t));
     }
   };
 
@@ -428,7 +428,8 @@ const WeekPage = () => {
               <div className="lg:fixed lg:top-[80px] lg:right-4 lg:w-[calc(25%-2rem)] xl:w-[calc(25%-2.5rem)] lg:h-[calc(100vh-100px)] lg:z-30">
                 <AvailableTasksSidebar 
                   tasks={tasksWithoutDate} 
-                  title="Sin Fecha Asignada" 
+                  title="Sin Fecha Asignada"
+                  onEdit={(task) => handleEditClick(task)}
                 />
               </div>
             </div>

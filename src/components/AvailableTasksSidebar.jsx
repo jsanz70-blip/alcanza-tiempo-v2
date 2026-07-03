@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDragDrop } from '@/hooks/useDragDrop.js';
 
-const AvailableTasksSidebar = ({ tasks, title }) => {
+const AvailableTasksSidebar = ({ tasks, title, onEdit }) => {
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [isExpanded, setIsExpanded] = useState(true);
@@ -97,10 +97,11 @@ const AvailableTasksSidebar = ({ tasks, title }) => {
               filteredTasks.map(task => (
                 <div 
                   key={task.id}
-                  className={`bg-background border border-border p-4 rounded-xl shadow-sm group ${getDraggedItemClass(task.id)}`}
+                  className={`bg-background border border-border p-4 rounded-xl shadow-sm group cursor-pointer ${getDraggedItemClass(task.id)}`}
                   draggable
                   onDragStart={(e) => startDrag(e, task.id, { type: 'task', taskId: task.id, sourceObj: 'sidebar' })}
                   onDragEnd={endDrag}
+                  onClick={() => onEdit && onEdit(task)}
                 >
                   <h4 className="font-medium text-sm text-foreground leading-snug mb-3">
                     {task.tarea}
